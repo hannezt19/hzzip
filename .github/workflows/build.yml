@@ -26,7 +26,7 @@ jobs:
           gradle-version: '8.7'
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > hzzip-release.keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/hzzip-release.keystore
 
       - name: Build release APK
         env:
