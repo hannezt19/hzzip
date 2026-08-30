@@ -31,9 +31,9 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
         initialFirstVisibleItemIndex = prefs.getInt(displayName, 0)
     )
 
-    var zoom by rememberSaveable { mutableFloatStateOf(1f) }
-    var offsetX by rememberSaveable { mutableFloatStateOf(0f) }
-    var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
 
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
         val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
