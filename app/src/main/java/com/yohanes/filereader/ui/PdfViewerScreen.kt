@@ -6,6 +6,8 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,25 +16,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-/**
- * Render PDF SATU HALAMAN dalam satu waktu (lazy), bukan semua halaman
- * sekaligus ke memori — penting untuk device RAM kecil (mis. Redmi C2 3GB).
- * Skala render bisa diperbesar/perkecil lewat tombol zoom.
- */
+private const val RENDER_SCALE = 2f
+
 @Composable
 fun PdfViewerScreen(uri: Uri, displayName: String) {
     val context = LocalContext.current
     var pageCount by remember { mutableIntStateOf(0) }
-    var scale by remember { mutableFloatStateOf(1.5f) }
     val prefs = remember { context.getSharedPreferences("pdf_progress", Context.MODE_PRIVATE) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState(
         initialFirstVisibleItemIndex = prefs.getInt(displayName, 0)
     )
 
-    // Simpan posisi terakhir setiap kali halaman berubah
     LaunchedEffect(listState.firstVisibleItemIndex) {
         prefs.edit().putInt(displayName, listState.firstVisibleItemIndex).apply()
     }
@@ -49,17 +48,18 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(8.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(displayName, maxLines = 1, style = MaterialTheme.typography.titleSmall)
-            Row {
-                IconButtonText("A-") { if (scale > 0.75f) scale -= 0.25f }
-                Spacer(Modifier.width(8.dp))
-                IconButtonText("A+") { if (scale < 3f) scale += 0.25f }
-            }
+            Text(displayName, maxLines = 1, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
         }
+        Text(
+            "Cubit untuk memperbesar - ketuk 2x untuk reset",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
 
         if (pageCount == 0) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -68,7 +68,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(pageCount) { index ->
-                    PdfPage(uri = uri, pageIndex = index, scale = scale)
+                    PdfPage(uri = uri, pageIndex = index)
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -77,30 +77,58 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 }
 
 @Composable
-private fun IconButtonText(label: String, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick) { Text(label) }
-}
-
-/**
- * Membuka file descriptor sendiri per halaman supaya bitmap halaman
- * sebelumnya bisa di-garbage-collect saat sudah di-scroll lewat.
- */
-@Composable
-private fun PdfPage(uri: Uri, pageIndex: Int, scale: Float) {
+private fun PdfPage(uri: Uri, pageIndex: Int) {
     val context = LocalContext.current
-    var bitmap by remember(pageIndex, scale) { mutableStateOf<Bitmap?>(null) }
+    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(pageIndex, scale) {
-        bitmap = renderSinglePage(context, uri, pageIndex, scale)
+    var zoom by remember(pageIndex) { mutableFloatStateOf(1f) }
+    var offsetX by remember(pageIndex) { mutableFloatStateOf(0f) }
+    var offsetY by remember(pageIndex) { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(pageIndex) {
+        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
     }
 
     val bmp = bitmap
     if (bmp != null) {
-        Image(
-            bitmap = bmp.asImageBitmap(),
-            contentDescription = "Halaman ${pageIndex + 1}",
-            modifier = Modifier.fillMaxWidth()
-        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .pointerInput(pageIndex) {
+                    detectTransformGestures { _, pan, gestureZoom, _ ->
+                        val newZoom = (zoom * gestureZoom).coerceIn(1f, 5f)
+                        zoom = newZoom
+                        if (zoom > 1f) {
+                            val maxOffset = (zoom - 1f) * 600f
+                            offsetX = (offsetX + pan.x).coerceIn(-maxOffset, maxOffset)
+                            offsetY = (offsetY + pan.y).coerceIn(-maxOffset, maxOffset)
+                        } else {
+                            offsetX = 0f
+                            offsetY = 0f
+                        }
+                    }
+                }
+                .pointerInput(pageIndex) {
+                    detectTapGestures(onDoubleTap = {
+                        zoom = 1f
+                        offsetX = 0f
+                        offsetY = 0f
+                    })
+                }
+        ) {
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "Halaman ${pageIndex + 1}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer(
+                        scaleX = zoom,
+                        scaleY = zoom,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+            )
+        }
     } else {
         Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
