@@ -26,12 +26,40 @@ fun CodeEditorScreen(
     fileType: FileType,
     initialContent: String,
     onSave: (String) -> Unit,
-    onSaveAs: (String) -> Unit
+    onSaveAs: (String) -> Unit,
+    onExit: () -> Unit
 ) {
     var field by remember { mutableStateOf(TextFieldValue(initialContent)) }
     val undoStack = remember { ArrayDeque<String>() }
     val redoStack = remember { ArrayDeque<String>() }
     var lastPushed by remember { mutableStateOf(initialContent) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    val isDirty = field.text != initialContent
+
+    androidx.activity.compose.BackHandler {
+        if (isDirty) showConfirmDialog = true else onExit()
+    }
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Perubahan belum disimpan") },
+            text = { Text("Simpan perubahan sebelum keluar?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSave(field.text)
+                    showConfirmDialog = false
+                    onExit()
+                }) { Text("Simpan") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showConfirmDialog = false
+                    onExit()
+                }) { Text("Buang Perubahan") }
+            }
+        )
+    }
 
     fun pushUndoIfChanged(newText: String) {
         if (newText != lastPushed) {
