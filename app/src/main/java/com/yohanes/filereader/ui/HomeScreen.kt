@@ -165,6 +165,7 @@ private fun categoryContainerColor(name: String): androidx.compose.ui.graphics.C
         "PDF" -> MaterialTheme.colorScheme.errorContainer
         "Gambar" -> MaterialTheme.colorScheme.tertiaryContainer
         "Excel" -> MaterialTheme.colorScheme.primaryContainer
+        "Favorit" -> MaterialTheme.colorScheme.surfaceVariant
         else -> MaterialTheme.colorScheme.secondaryContainer
     }
 }
@@ -175,6 +176,7 @@ private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Col
         "PDF" -> MaterialTheme.colorScheme.onErrorContainer
         "Gambar" -> MaterialTheme.colorScheme.onTertiaryContainer
         "Excel" -> MaterialTheme.colorScheme.onPrimaryContainer
+        "Favorit" -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSecondaryContainer
     }
 }

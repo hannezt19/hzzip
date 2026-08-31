@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
+import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.FileScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,7 @@ import kotlinx.coroutines.withContext
 
 enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
-val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Teks/Kode")
+val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Teks/Kode", "Favorit")
 
 data class StorageInfo(val totalBytes: Long, val usedBytes: Long, val freeBytes: Long)
 
@@ -44,11 +45,16 @@ fun categoryOf(extension: String): String {
     }
 }
 
+fun categoryEmojiExtra(category: String): String? {
+    return if (category == "Favorit") "\u2B50" else null
+}
+
 fun categoryEmoji(category: String): String {
     return when (category) {
         "PDF" -> "\uD83D\uDCC4"
         "Gambar" -> "\uD83D\uDDBC\uFE0F"
         "Excel" -> "\uD83D\uDCCA"
+        "Favorit" -> "\u2B50"
         else -> "\uD83D\uDCDD"
     }
 }
@@ -71,19 +77,29 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     val storageInfo: StorageInfo = getStorageInfo()
 
-    val categoryCounts: StateFlow<Map<String, Int>> = dao.getAll()
-        .map { all -> all.groupingBy { categoryOf(it.extension) }.eachCount() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    val categoryCounts: StateFlow<Map<String, Int>> = combine(
+        dao.getAll(),
+        FavoritesStore.favorites
+    ) { all, favs ->
+        val base = all.groupingBy { categoryOf(it.extension) }.eachCount().toMutableMap()
+        base["Favorit"] = all.count { favs.contains(it.path) }
+        base
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val files: StateFlow<List<FileEntity>> = combine(
         dao.getAll(),
         _searchQuery,
         _selectedCategory,
-        _sortOption
-    ) { all, query, category, sort ->
+        _sortOption,
+        FavoritesStore.favorites
+    ) { all, query, category, sort, favs ->
         val filtered = all.filter { file ->
-            (query.isBlank() || file.name.contains(query, ignoreCase = true)) &&
-                (category == null || categoryOf(file.extension) == category)
+            val matchesCategory = when (category) {
+                null -> true
+                "Favorit" -> favs.contains(file.path)
+                else -> categoryOf(file.extension) == category
+            }
+            (query.isBlank() || file.name.contains(query, ignoreCase = true)) && matchesCategory
         }
         when (sort) {
             SortOption.NAME_AZ -> filtered.sortedBy { it.name.lowercase() }
@@ -93,6 +109,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        FavoritesStore.init(application)
         refreshScan()
     }
 
