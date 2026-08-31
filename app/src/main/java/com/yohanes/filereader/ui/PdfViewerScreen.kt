@@ -12,6 +12,8 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
@@ -65,19 +67,28 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 CircularProgressIndicator()
             }
         } else {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { pageIndex ->
-                ZoomablePdfPage(uri = uri, pageIndex = pageIndex)
-            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { pageIndex ->
+                    ZoomablePdfPage(uri = uri, pageIndex = pageIndex)
+                }
 
-            Text(
-                "${pagerState.currentPage + 1} / $pageCount",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.fillMaxWidth().padding(4.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
+                Text(
+                    "${pagerState.currentPage + 1} / $pageCount",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .align(androidx.compose.ui.Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(
+                            androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    color = androidx.compose.ui.graphics.Color.White
+                )
+            }
         }
     }
 }
