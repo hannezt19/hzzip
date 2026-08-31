@@ -109,6 +109,19 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun AppRoot() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var permissionGranted by remember { mutableStateOf(com.yohanes.filereader.permission.hasStoragePermission()) }
+
+    if (!permissionGranted) {
+        PermissionRequestState(
+            onRequestPermission = {
+                context.startActivity(com.yohanes.filereader.permission.requestStoragePermissionIntent(context.packageName))
+            },
+            onRecheck = { permissionGranted = com.yohanes.filereader.permission.hasStoragePermission() }
+        )
+        return
+    }
+
         val uri = currentUri
         if (uri == null) {
             EmptyState(onPickFile = {
@@ -168,5 +181,29 @@ private fun UnsupportedState(name: String) {
         Text("Jenis file belum didukung", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         Text(name, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun PermissionRequestState(
+    onRequestPermission: () -> Unit,
+    onRecheck: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Izin Akses File Diperlukan", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Aplikasi ini butuh izin akses semua file untuk mencari dan membuka dokumen di penyimpanan HP kamu.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onRequestPermission) { Text("Izinkan Akses Semua File") }
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = onRecheck) { Text("Sudah Izinkan? Cek Lagi") }
     }
 }
