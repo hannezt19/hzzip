@@ -2,7 +2,7 @@ package com.yohanes.filereader.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -26,7 +26,7 @@ fun BottomNavBar(selectedTab: AppTab, onTabSelected: (AppTab) -> Unit) {
         NavigationBarItem(
             selected = selectedTab == AppTab.RECENT,
             onClick = { onTabSelected(AppTab.RECENT) },
-            icon = { Icon(Icons.Filled.History, contentDescription = "Terakhir Dibuka") },
+            icon = { Icon(Icons.Filled.List, contentDescription = "Terakhir Dibuka") },
             label = { Text("Terakhir") }
         )
         NavigationBarItem(
