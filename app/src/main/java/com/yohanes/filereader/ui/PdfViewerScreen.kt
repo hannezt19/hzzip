@@ -6,9 +6,11 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -89,19 +91,6 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
-        zoom = newZoom
-        if (newZoom > 1f) {
-            val maxOffset = (newZoom - 1f) * 800f
-            offsetX = (offsetX + panChange.x).coerceIn(-maxOffset, maxOffset)
-            offsetY = (offsetY + panChange.y).coerceIn(-maxOffset, maxOffset)
-        } else {
-            offsetX = 0f
-            offsetY = 0f
-        }
-    }
-
     LaunchedEffect(pageIndex) {
         bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
     }
@@ -110,13 +99,40 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
     Box(
         Modifier
             .fillMaxSize()
-            .transformable(state = transformState, enabled = zoom > 1f)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val isPinch = event.changes.size >= 2
+                        if (isPinch || zoom > 1f) {
+                            val zoomChange = event.calculateZoom()
+                            val panChange = event.calculatePan()
+                            val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
+                            zoom = newZoom
+                            if (newZoom > 1f) {
+                                val maxOffset = (newZoom - 1f) * 800f
+                                offsetX = (offsetX + panChange.x).coerceIn(-maxOffset, maxOffset)
+                                offsetY = (offsetY + panChange.y).coerceIn(-maxOffset, maxOffset)
+                            } else {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        zoom = 1f
-                        offsetX = 0f
-                        offsetY = 0f
+                        if (zoom > 1f) {
+                            zoom = 1f
+                            offsetX = 0f
+                            offsetY = 0f
+                        } else {
+                            zoom = 2.5f
+                        }
                     }
                 )
             },
