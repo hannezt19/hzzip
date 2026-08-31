@@ -11,32 +11,67 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
+enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
+val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Teks/Kode")
+
+fun categoryOf(extension: String): String {
+    return when (extension.lowercase()) {
+        "pdf" -> "PDF"
+        "jpg", "jpeg", "png", "webp", "gif" -> "Gambar"
+        "xlsx" -> "Excel"
+        else -> "Teks/Kode"
+    }
+}
+
+fun categoryEmoji(category: String): String {
+    return when (category) {
+        "PDF" -> "\uD83D\uDCC4"
+        "Gambar" -> "\uD83D\uDDBC\uFE0F"
+        "Excel" -> "\uD83D\uDCCA"
+        else -> "\uD83D\uDCDD"
+    }
+}
+
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getInstance(application)
     private val dao = db.fileDao()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private val _selectedExtension = MutableStateFlow<String?>(null)
-    val selectedExtension: StateFlow<String?> = _selectedExtension
+    private val _selectedCategory = MutableStateFlow<String?>(null)
+    val selectedCategory: StateFlow<String?> = _selectedCategory
+
+    private val _sortOption = MutableStateFlow(SortOption.DATE_NEWEST)
+    val sortOption: StateFlow<SortOption> = _sortOption
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning
 
+    val categoryCounts: StateFlow<Map<String, Int>> = dao.getAll()
+        .map { all -> all.groupingBy { categoryOf(it.extension) }.eachCount() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     val files: StateFlow<List<FileEntity>> = combine(
         dao.getAll(),
         _searchQuery,
-        _selectedExtension
-    ) { all, query, ext ->
-        all.filter { file ->
+        _selectedCategory,
+        _sortOption
+    ) { all, query, category, sort ->
+        val filtered = all.filter { file ->
             (query.isBlank() || file.name.contains(query, ignoreCase = true)) &&
-                (ext == null || file.extension == ext)
+                (category == null || categoryOf(file.extension) == category)
+        }
+        when (sort) {
+            SortOption.NAME_AZ -> filtered.sortedBy { it.name.lowercase() }
+            SortOption.DATE_NEWEST -> filtered.sortedByDescending { it.lastModified }
+            SortOption.SIZE_LARGEST -> filtered.sortedByDescending { it.sizeBytes }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -48,8 +83,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _searchQuery.value = query
     }
 
-    fun onExtensionFilterChange(ext: String?) {
-        _selectedExtension.value = ext
+    fun onCategorySelected(category: String?) {
+        _selectedCategory.value = category
+        _searchQuery.value = ""
+    }
+
+    fun onSortOptionChange(option: SortOption) {
+        _sortOption.value = option
     }
 
     fun refreshScan() {
