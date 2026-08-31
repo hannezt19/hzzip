@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yohanes.filereader.ui.CodeEditorScreen
+import com.yohanes.filereader.ui.HomeScreen
 import com.yohanes.filereader.ui.PdfViewerScreen
 import java.io.BufferedReader
 import java.io.InputStreamReader
