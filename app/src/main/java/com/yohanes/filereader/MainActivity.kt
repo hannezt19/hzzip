@@ -124,14 +124,19 @@ class MainActivity : ComponentActivity() {
 
         val uri = currentUri
         if (uri == null) {
-            EmptyState(onPickFile = {
-                openDocumentLauncher.launch(
-                    arrayOf(
-                        "application/pdf", "application/json", "text/html",
-                        "text/javascript", "application/javascript", "text/plain"
+            HomeScreen(
+                onFileClick = { file ->
+                    loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
+                },
+                onPickFileManually = {
+                    openDocumentLauncher.launch(
+                        arrayOf(
+                            "application/pdf", "application/json", "text/html",
+                            "text/javascript", "application/javascript", "text/plain"
+                        )
                     )
-                )
-            })
+                }
+            )
             return
         }
 
