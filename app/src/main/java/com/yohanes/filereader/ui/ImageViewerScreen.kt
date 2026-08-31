@@ -25,6 +25,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box as FavBox
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
+import com.yohanes.filereader.data.FavoritesStore
 
 @Composable
 fun ImageViewerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
@@ -42,6 +49,10 @@ fun ImageViewerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     var zoom by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+
+    val favKey = uri.path ?: uri.toString()
+    val favorites by FavoritesStore.favorites.collectAsState()
+    val isFav = favorites.contains(favKey)
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -92,6 +103,17 @@ fun ImageViewerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                         }
                 )
             }
+        }
+
+        IconButton(
+            onClick = { FavoritesStore.toggle(favKey) },
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = "Favorit",
+                tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.White
+            )
         }
     }
 }

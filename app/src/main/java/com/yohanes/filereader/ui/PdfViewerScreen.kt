@@ -25,6 +25,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.yohanes.filereader.data.FavoritesStore
 
 private const val RENDER_SCALE = 2f
 
@@ -54,13 +61,29 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
         prefs.edit().putInt(displayName, pagerState.currentPage).apply()
     }
 
+    val favKey = uri.path ?: uri.toString()
+    val favorites by FavoritesStore.favorites.collectAsState()
+    val isFav = favorites.contains(favKey)
+
     Column(Modifier.fillMaxSize()) {
-        Text(
-            displayName,
-            maxLines = 1,
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                displayName,
+                maxLines = 1,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 4.dp)
+            )
+            IconButton(onClick = { FavoritesStore.toggle(favKey) }) {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = "Favorit",
+                    tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
+                )
+            }
+        }
 
         if (pageCount == 0) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

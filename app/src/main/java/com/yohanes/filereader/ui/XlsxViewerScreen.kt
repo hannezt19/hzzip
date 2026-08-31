@@ -40,11 +40,18 @@ import com.yohanes.filereader.data.XlsxCell
 import com.yohanes.filereader.data.XlsxParser
 import com.yohanes.filereader.data.XlsxSheet
 import com.yohanes.filereader.data.XlsxWriter
+import com.yohanes.filereader.data.FavoritesStore
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun XlsxViewerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     val context = LocalContext.current
+    val favKey = uri.path ?: uri.toString()
+    val favorites by FavoritesStore.favorites.collectAsState()
+    val isFav = favorites.contains(favKey)
 
     var sheet by remember { mutableStateOf<XlsxSheet?>(null) }
     var loadFailed by remember { mutableStateOf(false) }
@@ -90,6 +97,13 @@ fun XlsxViewerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = { FavoritesStore.toggle(favKey) }) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = "Favorit",
+                            tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
+                        )
+                    }
                     TextButton(onClick = { save() }) {
                         Text("Simpan")
                     }
