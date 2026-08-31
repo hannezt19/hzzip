@@ -118,11 +118,43 @@ private fun CategoryHomeScreen(
                     Modifier.fillMaxSize().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    StorageCard(viewModel.storageInfo)
                     CATEGORY_LIST.forEach { cat ->
                         CategoryCard(cat, counts[cat] ?: 0) { onCategoryClick(cat) }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StorageCard(info: StorageInfo) {
+    val usedFraction = if (info.totalBytes > 0) info.usedBytes.toFloat() / info.totalBytes.toFloat() else 0f
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("\uD83D\uDCC1", style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text("Direktori", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "${formatSize(info.usedBytes)} terpakai dari ${formatSize(info.totalBytes)}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = usedFraction,
+                modifier = Modifier.fillMaxWidth().height(8.dp)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text("${formatSize(info.freeBytes)} tersisa", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.yohanes.filereader.ui
 
 import android.app.Application
+import android.os.Environment
+import android.os.StatFs
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.yohanes.filereader.data.AppDatabase
@@ -19,6 +21,19 @@ import kotlinx.coroutines.withContext
 enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
 val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Teks/Kode")
+
+data class StorageInfo(val totalBytes: Long, val usedBytes: Long, val freeBytes: Long)
+
+fun getStorageInfo(): StorageInfo {
+    return try {
+        val stat = StatFs(Environment.getExternalStorageDirectory().path)
+        val total = stat.totalBytes
+        val free = stat.availableBytes
+        StorageInfo(total, total - free, free)
+    } catch (e: Exception) {
+        StorageInfo(0, 0, 0)
+    }
+}
 
 fun categoryOf(extension: String): String {
     return when (extension.lowercase()) {
@@ -53,6 +68,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning
+
+    val storageInfo: StorageInfo = getStorageInfo()
 
     val categoryCounts: StateFlow<Map<String, Int>> = dao.getAll()
         .map { all -> all.groupingBy { categoryOf(it.extension) }.eachCount() }
