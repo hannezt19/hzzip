@@ -116,21 +116,10 @@ private fun CategoryHomeScreen(
             else -> {
                 Column(
                     Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CategoryCard(CATEGORY_LIST[0], counts[CATEGORY_LIST[0]] ?: 0, Modifier.weight(1f)) { onCategoryClick(CATEGORY_LIST[0]) }
-                        CategoryCard(CATEGORY_LIST[1], counts[CATEGORY_LIST[1]] ?: 0, Modifier.weight(1f)) { onCategoryClick(CATEGORY_LIST[1]) }
-                    }
-                    Row(
-                        Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CategoryCard(CATEGORY_LIST[2], counts[CATEGORY_LIST[2]] ?: 0, Modifier.weight(1f)) { onCategoryClick(CATEGORY_LIST[2]) }
-                        CategoryCard(CATEGORY_LIST[3], counts[CATEGORY_LIST[3]] ?: 0, Modifier.weight(1f)) { onCategoryClick(CATEGORY_LIST[3]) }
+                    CATEGORY_LIST.forEach { cat ->
+                        CategoryCard(cat, counts[cat] ?: 0) { onCategoryClick(cat) }
                     }
                 }
             }
@@ -139,25 +128,43 @@ private fun CategoryHomeScreen(
 }
 
 @Composable
-private fun CategoryCard(name: String, count: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun categoryContainerColor(name: String): androidx.compose.ui.graphics.Color {
+    return when (name) {
+        "PDF" -> MaterialTheme.colorScheme.errorContainer
+        "Gambar" -> MaterialTheme.colorScheme.tertiaryContainer
+        "Excel" -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.secondaryContainer
+    }
+}
+
+@Composable
+private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Color {
+    return when (name) {
+        "PDF" -> MaterialTheme.colorScheme.onErrorContainer
+        "Gambar" -> MaterialTheme.colorScheme.onTertiaryContainer
+        "Excel" -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+}
+
+@Composable
+private fun CategoryCard(name: String, count: Int, onClick: () -> Unit) {
+    val contentColor = categoryContentColor(name)
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = modifier.aspectRatio(1f)
+        shape = RoundedCornerShape(20.dp),
+        color = categoryContainerColor(name),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            Modifier.fillMaxSize().padding(20.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(categoryEmoji(name), style = MaterialTheme.typography.headlineLarge)
-            Column {
-                Text(name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "$count file",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+            Text(categoryEmoji(name), style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleMedium, color = contentColor)
+                Text("$count file", style = MaterialTheme.typography.bodySmall, color = contentColor)
             }
         }
     }
