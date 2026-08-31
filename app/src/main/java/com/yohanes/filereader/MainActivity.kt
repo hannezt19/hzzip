@@ -125,19 +125,39 @@ class MainActivity : ComponentActivity() {
 
         val uri = currentUri
         if (uri == null) {
-            HomeScreen(
-                onFileClick = { file ->
-                    loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
-                },
-                onPickFileManually = {
-                    openDocumentLauncher.launch(
-                        arrayOf(
-                            "application/pdf", "application/json", "text/html",
-                            "text/javascript", "application/javascript", "text/plain"
-                        )
+            var selectedTab by remember { mutableStateOf(com.yohanes.filereader.ui.AppTab.HOME) }
+            androidx.compose.material3.Scaffold(
+                bottomBar = {
+                    com.yohanes.filereader.ui.BottomNavBar(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it }
                     )
                 }
-            )
+            ) { padding ->
+                Box(Modifier.padding(padding)) {
+                    when (selectedTab) {
+                        com.yohanes.filereader.ui.AppTab.HOME -> HomeScreen(
+                            onFileClick = { file ->
+                                loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
+                            },
+                            onPickFileManually = {
+                                openDocumentLauncher.launch(
+                                    arrayOf(
+                                        "application/pdf", "application/json", "text/html",
+                                        "text/javascript", "application/javascript", "text/plain"
+                                    )
+                                )
+                            }
+                        )
+                        com.yohanes.filereader.ui.AppTab.RECENT -> com.yohanes.filereader.ui.RecentScreen(
+                            onFileClick = { file ->
+                                loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
+                            }
+                        )
+                        com.yohanes.filereader.ui.AppTab.SETTINGS -> com.yohanes.filereader.ui.SettingsScreen()
+                    }
+                }
+            }
             return
         }
 
