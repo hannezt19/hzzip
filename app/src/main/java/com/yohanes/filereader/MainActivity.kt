@@ -168,6 +168,7 @@ class MainActivity : ComponentActivity() {
 
         when (currentType) {
             FileType.PDF -> PdfViewerScreen(uri = uri, displayName = currentName)
+            FileType.IMAGE -> com.yohanes.filereader.ui.ImageViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.UNKNOWN -> UnsupportedState(currentName)
             else -> CodeEditorScreen(
                 displayName = currentName,
