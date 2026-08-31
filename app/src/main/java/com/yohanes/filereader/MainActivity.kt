@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
         currentName = name
         currentType = type
 
-        if (type != FileType.PDF && type != FileType.UNKNOWN) {
+        if (type != FileType.PDF && type != FileType.UNKNOWN && type != FileType.IMAGE && type != FileType.XLSX) {
             currentContent = readText(uri)
         }
     }
@@ -169,6 +169,7 @@ class MainActivity : ComponentActivity() {
         when (currentType) {
             FileType.PDF -> PdfViewerScreen(uri = uri, displayName = currentName)
             FileType.IMAGE -> com.yohanes.filereader.ui.ImageViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
+            FileType.XLSX -> com.yohanes.filereader.ui.XlsxViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.UNKNOWN -> UnsupportedState(currentName)
             else -> CodeEditorScreen(
                 displayName = currentName,

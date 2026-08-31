@@ -5,7 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 
 enum class FileType {
-    PDF, JSON, HTML, JS, TEXT, IMAGE, UNKNOWN
+    PDF, JSON, HTML, JS, TEXT, IMAGE, XLSX, UNKNOWN
 }
 
 object FileTypeDetector {
@@ -25,10 +25,12 @@ object FileTypeDetector {
             name.endsWith(".js") || name.endsWith(".mjs") -> return FileType.JS
             name.endsWith(".txt") || name.endsWith(".css") || name.endsWith(".xml") -> return FileType.TEXT
             name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp") || name.endsWith(".gif") -> return FileType.IMAGE
+            name.endsWith(".xlsx") -> return FileType.XLSX
         }
 
         val mime = resolver.getType(uri)
         if (mime?.startsWith("image/") == true) return FileType.IMAGE
+        if (mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return FileType.XLSX
         return when (mime) {
             "application/pdf" -> FileType.PDF
             "application/json", "text/json" -> FileType.JSON
