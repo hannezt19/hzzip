@@ -177,7 +177,8 @@ class MainActivity : ComponentActivity() {
                 onSaveAs = { text ->
                     pendingSaveAsText = text
                     createDocumentLauncher.launch(currentName)
-                }
+                },
+                onExit = { currentUri = null }
             )
         }
     }
