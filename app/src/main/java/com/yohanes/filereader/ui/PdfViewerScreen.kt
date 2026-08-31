@@ -6,17 +6,19 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
@@ -27,30 +29,11 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     val context = LocalContext.current
     var pageCount by remember { mutableIntStateOf(0) }
     val prefs = remember { context.getSharedPreferences("pdf_progress", Context.MODE_PRIVATE) }
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState(
-        initialFirstVisibleItemIndex = prefs.getInt(displayName, 0)
+
+    val pagerState = rememberPagerState(
+        initialPage = prefs.getInt(displayName, 0),
+        pageCount = { pageCount }
     )
-
-    var zoom by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
-
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
-        zoom = newZoom
-        if (zoom > 1f) {
-            val maxOffset = (zoom - 1f) * 800f
-            offsetX = (offsetX + panChange.x).coerceIn(-maxOffset, maxOffset)
-            offsetY = (offsetY + panChange.y).coerceIn(-maxOffset, maxOffset)
-        } else {
-            offsetX = 0f
-            offsetY = 0f
-        }
-    }
-
-    LaunchedEffect(listState.firstVisibleItemIndex) {
-        prefs.edit().putInt(displayName, listState.firstVisibleItemIndex).apply()
-    }
 
     DisposableEffect(uri) {
         val pfd = context.contentResolver.openFileDescriptor(uri, "r")
@@ -60,6 +43,10 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
             renderer?.close()
             pfd?.close()
         }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        prefs.edit().putInt(displayName, pagerState.currentPage).apply()
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -75,45 +62,79 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .transformable(state = transformState)
-                    .graphicsLayer(
-                        scaleX = zoom,
-                        scaleY = zoom,
-                        translationX = offsetX,
-                        translationY = offsetY
-                    )
-            ) {
-                items(pageCount) { index ->
-                    PdfPage(uri = uri, pageIndex = index)
-                    Spacer(Modifier.height(8.dp))
-                }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { pageIndex ->
+                ZoomablePdfPage(uri = uri, pageIndex = pageIndex)
             }
+
+            Text(
+                "${pagerState.currentPage + 1} / $pageCount",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.fillMaxWidth().padding(4.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
-private fun PdfPage(uri: Uri, pageIndex: Int) {
+private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
+        zoom = newZoom
+        if (newZoom > 1f) {
+            val maxOffset = (newZoom - 1f) * 800f
+            offsetX = (offsetX + panChange.x).coerceIn(-maxOffset, maxOffset)
+            offsetY = (offsetY + panChange.y).coerceIn(-maxOffset, maxOffset)
+        } else {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
 
     LaunchedEffect(pageIndex) {
         bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
     }
 
     val bmp = bitmap
-    if (bmp != null) {
-        Image(
-            bitmap = bmp.asImageBitmap(),
-            contentDescription = "Halaman ${pageIndex + 1}",
-            modifier = Modifier.fillMaxWidth()
-        )
-    } else {
-        Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .transformable(state = transformState)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        zoom = 1f
+                        offsetX = 0f
+                        offsetY = 0f
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        if (bmp != null) {
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "Halaman ${pageIndex + 1}",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = zoom,
+                        scaleY = zoom,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+            )
+        } else {
             CircularProgressIndicator()
         }
     }
