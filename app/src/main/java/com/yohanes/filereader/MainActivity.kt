@@ -124,6 +124,11 @@ class MainActivity : ComponentActivity() {
     }
 
         val uri = currentUri
+        if (uri != null) {
+            androidx.activity.compose.BackHandler {
+                currentUri = null
+            }
+        }
         if (uri == null) {
             var selectedTab by remember { mutableStateOf(com.yohanes.filereader.ui.AppTab.HOME) }
             androidx.compose.material3.Scaffold(

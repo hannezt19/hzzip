@@ -110,7 +110,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
     Box(
         Modifier
             .fillMaxSize()
-            .transformable(state = transformState)
+            .transformable(state = transformState, enabled = zoom > 1f)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
