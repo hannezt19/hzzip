@@ -32,6 +32,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.yohanes.filereader.data.FavoritesStore
+import com.yohanes.filereader.data.OcrStore
+import com.yohanes.filereader.data.OcrStatus
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
 
@@ -65,6 +70,11 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     val favorites by FavoritesStore.favorites.collectAsState()
     val isFav = favorites.contains(favKey)
 
+    var showTextMode by remember { mutableStateOf(false) }
+    var hasOcrCache by remember(displayName) { mutableStateOf(OcrStore.hasCache(context, displayName)) }
+    val ocrStatus by OcrStore.status.collectAsState()
+    val scope = rememberCoroutineScope()
+
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 0.dp),
@@ -83,9 +93,45 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
                 )
             }
+            if (hasOcrCache) {
+                TextButton(onClick = { showTextMode = !showTextMode }) {
+                    Text(if (showTextMode) "Lihat PDF" else "Lihat Teks")
+                }
+            } else {
+                TextButton(onClick = {
+                    scope.launch {
+                        OcrStore.process(context, uri, displayName)
+                        hasOcrCache = OcrStore.hasCache(context, displayName)
+                    }
+                }) {
+                    Text("Proses OCR")
+                }
+            }
         }
 
-        if (pageCount == 0) {
+        if (ocrStatus is OcrStatus.Processing) {
+            val st = ocrStatus as OcrStatus.Processing
+            LinearProgressIndicator(
+                progress = { st.currentPage.toFloat() / st.totalPages.toFloat() },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            )
+            Text(
+                "Memproses OCR halaman ${st.currentPage}/${st.totalPages}",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
+
+        if (showTextMode) {
+            Text(
+                OcrStore.readCache(context, displayName),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        } else if (pageCount == 0) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
