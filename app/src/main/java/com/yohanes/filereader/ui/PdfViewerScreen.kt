@@ -195,7 +195,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
                             val panChange = event.calculatePan()
                             val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
                             zoom = newZoom
-                            val currentBmp = bmp
+                            val currentBmp = bitmap
                             if (newZoom > 1f && currentBmp != null && containerSize.width > 0 && containerSize.height > 0) {
                                 val containerW = containerSize.width.toFloat()
                                 val containerH = containerSize.height.toFloat()
