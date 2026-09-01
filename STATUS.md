@@ -1,6 +1,6 @@
 # STATUS - FileReaderApp
 
-> Update terakhir: revisi Beranda (kartu kategori + Direktori + Favorit) selesai, sedang menunggu build fitur tombol favorit di semua viewer.
+> Update terakhir: bug "Gambar 0 file" & dark theme toggle selesai diperbaiki. Fondasi OCR PDF (ML Kit Text Recognition) selesai dibangun & terpasang di HP. Lanjut ke fix bug zoom PDF.
 > File ini isinya keputusan desain penting + catatan teknis biar sesi berikutnya (akun mana pun) gak mengulang diskusi/kesalahan yang sama.
 > Kalau file ini diupdate: tambahkan keputusan/catatan baru di bagian yang sesuai, jangan hapus yang lama kecuali sudah tidak relevan.
 
@@ -18,7 +18,8 @@
 - **Proses patch kode**: semua edit kode dilakukan lewat script `python3` (bukan `sed`/manual edit) dengan pola cari `old` string persis, ganti ke `new`, lalu print jumlah berhasil (misal "2/2") - ini WAJIB dicek dulu sebelum commit, karena kalau hasilnya "0/1" berarti teks yang dicari tidak ketemu persis (biasanya beda whitespace/indentasi), dan file BELUM berubah.
 - **Environment kerja**: tidak ada Android Studio/laptop, semua dikerjakan dari HP via Termux. Build APK selalu lewat GitHub Actions (push ke GitHub -> otomatis build -> unduh APK dari halaman Actions -> instal manual di HP). Setiap selesai patch, WAJIB commit+push lalu cek hasil build di GitHub Actions sebelum lanjut ke langkah berikutnya.
 - **File besar**: kalau bikin file baru yang panjang (100+ baris) lewat heredoc (`cat > file << 'EOF'`), selalu cek `wc -l` setelahnya dan `tail -5` untuk pastikan file tidak terpotong sebelum lanjut.
+- **ML Kit / Task.await()**: memanggil `.await()` pada `com.google.android.gms.tasks.Task` (misal hasil ML Kit) butuh dependency terpisah `org.jetbrains.kotlinx:kotlinx-coroutines-play-services` - `kotlinx-coroutines-core` saja TIDAK cukup, build gagal dengan error "Unresolved reference: await".
+- **SharedPreferences store pattern**: pola FavoritesStore.kt (StateFlow + init(context) + SharedPreferences) dipakai ulang untuk ThemeStore.kt & OcrStore.kt - kalau bikin store baru, ikuti pola ini biar konsisten.
 
 ## Bug Diketahui (belum diperbaiki)
-- Kartu "Gambar" di Beranda menunjukkan 0 file padahal ada foto di HP - kemungkinan FileScanner belum mendeteksi ekstensi gambar dengan benar
 - Zoom PDF: konten bisa melebihi batas frame saat diperbesar (beda dari Google PDF Viewer yang tetap terkurung rapi)
