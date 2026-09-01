@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import com.yohanes.filereader.data.ThemeStore
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,9 +45,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
+        ThemeStore.init(this)
 
         setContent {
-            MaterialTheme {
+            val isDarkMode = ThemeStore.isDarkMode.collectAsState()
+            MaterialTheme(
+                colorScheme = if (isDarkMode.value) darkColorScheme() else lightColorScheme()
+            ) {
                 Surface(Modifier.fillMaxSize()) {
                     AppRoot()
                 }
@@ -159,7 +164,10 @@ class MainActivity : ComponentActivity() {
                                 loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
                             }
                         )
-                        com.yohanes.filereader.ui.AppTab.SETTINGS -> com.yohanes.filereader.ui.SettingsScreen()
+                        com.yohanes.filereader.ui.AppTab.SETTINGS -> com.yohanes.filereader.ui.SettingsScreen(
+                            isDarkMode = ThemeStore.isDarkMode.collectAsState().value,
+                            onToggleDarkMode = { ThemeStore.toggle() }
+                        )
                     }
                 }
             }
