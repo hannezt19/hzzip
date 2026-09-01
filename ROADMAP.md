@@ -1,6 +1,6 @@
 # Roadmap - FileReaderApp
 
-> Update terakhir: bug "Gambar 0 file" & dark theme toggle selesai. Fondasi OCR PDF (ML Kit Text Recognition, proses per halaman + mode "Lihat Teks") juga sudah selesai & terpasang di HP. Lanjut ke fix bug zoom PDF berikutnya.
+> Update terakhir: Dark theme toggle selesai (ThemeStore.kt + SharedPreferences, MaterialTheme ikut colorScheme, kartu Beranda pakai warna tema jadi otomatis ikut gelap/terang) & OCR untuk PDF hasil scan sudah berjalan. Selanjutnya: fix bug zoom PDF.
 > Kalau file ini diupdate, tulis di baris "Update terakhir" di atas: apa yang baru selesai, biar sesi berikutnya (akun mana pun) langsung tahu titik pijaknya tanpa scroll riwayat chat.
 
 ## Tujuan Proyek
@@ -13,13 +13,11 @@ App Android pengganti beberapa app reader/editor: baca & edit banyak jenis file 
 - **Tahap 3**: Image Viewer (pinch-zoom, pan, double-tap) ✅ | xlsx versi dasar (lihat/edit sel/simpan, formula ditampilkan sebagai teks belum dihitung) ✅ | pptx belum dikerjakan
 - **Redesain Beranda** (Material You -> revisi ala "One Read"): kartu kategori warna beda per jenis, ikon kiri, layout rapat, kartu Direktori (info penyimpanan), kartu Favorit ✅
 - **Sistem Favorit**: FavoritesStore.kt (SharedPreferences, terpisah dari DB file biar gak kereset scan ulang) + tombol bintang di semua viewer (PDF/Gambar/Excel/Teks-Kode) ✅
-- **Bug kartu "Gambar" 0 file**: FileScanner.kt belum mendaftarkan ekstensi gambar (jpg/jpeg/png/webp/gif) di SUPPORTED_EXTENSIONS, sudah disamakan dengan FileType.kt ✅
-- **Dark theme toggle**: ThemeStore.kt (SharedPreferences) + MaterialTheme dinamis (darkColorScheme/lightColorScheme) di MainActivity, switch di SettingsScreen ✅
-- **OCR untuk PDF (fondasi)**: OcrStore.kt pakai ML Kit Text Recognition v2 (on-device), proses per halaman di background (bukan realtime), hasil teks disimpan di cache file (filesDir/ocr_cache), tombol "Proses OCR" + toggle mode "Lihat Teks" di PdfViewerScreen ✅
+- **Bug kartu "Gambar" 0 file**: FileScanner sudah deteksi gambar dengan benar ✅
+- **Dark theme toggle**: ThemeStore.kt (SharedPreferences) + toggle di Pengaturan + MaterialTheme colorScheme + kartu Beranda pakai warna tema ✅
+- **OCR untuk PDF hasil scan**: sudah berjalan ✅
 
 ## Belum Dikerjakan (dari dokumen "Rencana Pengembangan Ebook Reader")
-Urutan prioritas usulan dokumen: fix bug zoom PDF -> kenyamanan baca dasar -> UI/UX -> fitur lanjutan.
-
 1. Fix bug zoom PDF - konten melebihi frame saat diperbesar
 2. Mode E-ink (background putih pucat/sepia, font serif, kontras tinggi, transisi halaman instan)
 3. Panel pengaturan baca (kecerahan in-app, mode halaman vertikal/horizontal/ganda, tema warna latar)
