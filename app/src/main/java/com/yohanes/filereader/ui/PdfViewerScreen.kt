@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -171,16 +172,18 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
     var zoom by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    var containerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     LaunchedEffect(pageIndex) {
         bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
     }
 
     val bmp = bitmap
-    BoxWithConstraints(
+    Box(
         Modifier
             .fillMaxSize()
             .clipToBounds()
+            .onGloballyPositioned { coordinates -> containerSize = coordinates.size }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -193,9 +196,9 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
                             val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
                             zoom = newZoom
                             val currentBmp = bmp
-                            if (newZoom > 1f && currentBmp != null) {
-                                val containerW = constraints.maxWidth.toFloat()
-                                val containerH = constraints.maxHeight.toFloat()
+                            if (newZoom > 1f && currentBmp != null && containerSize.width > 0 && containerSize.height > 0) {
+                                val containerW = containerSize.width.toFloat()
+                                val containerH = containerSize.height.toFloat()
                                 val bitmapAspect = currentBmp.width.toFloat() / currentBmp.height.toFloat()
                                 val containerAspect = containerW / containerH
                                 // ukuran halaman saat zoom = 1 (hasil ContentScale.Fit)
