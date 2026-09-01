@@ -15,15 +15,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yohanes.filereader.FileType
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 
 /**
  * Editor teks sederhana: nomor baris + syntax highlighting + undo/redo + simpan.
  * History undo/redo dibatasi supaya tidak boros memori di device RAM kecil.
  */
 @Composable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-
 fun CodeEditorScreen(
     uri: android.net.Uri,
     displayName: String,
