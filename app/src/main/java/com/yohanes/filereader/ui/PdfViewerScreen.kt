@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -35,12 +36,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.OcrStore
-import com.yohanes.filereader.data.OcrStatus
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
+private const val OCR_TEXT_SIZE_MIN = 12f
+private const val OCR_TEXT_SIZE_MAX = 28f
+private const val OCR_TEXT_SIZE_STEP = 2f
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -48,6 +51,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     val context = LocalContext.current
     var pageCount by remember { mutableIntStateOf(0) }
     val prefs = remember { context.getSharedPreferences("pdf_progress", Context.MODE_PRIVATE) }
+    val ocrPrefs = remember { context.getSharedPreferences("ocr_settings", Context.MODE_PRIVATE) }
 
     val pagerState = rememberPagerState(
         initialPage = prefs.getInt(displayName, 0),
@@ -72,10 +76,24 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     val favorites by FavoritesStore.favorites.collectAsState()
     val isFav = favorites.contains(favKey)
 
-    var showTextMode by remember { mutableStateOf(false) }
-    var hasOcrCache by remember(displayName) { mutableStateOf(OcrStore.hasCache(context, displayName)) }
-    val ocrStatus by OcrStore.status.collectAsState()
-    val scope = rememberCoroutineScope()
+    var ocrModeActive by remember { mutableStateOf(false) }
+    var sheetPageIndex by remember { mutableStateOf<Int?>(null) }
+    var textSizeSp by remember { mutableFloatStateOf(ocrPrefs.getFloat("text_size_sp", 16f)) }
+
+    fun changeTextSize(delta: Float) {
+        textSizeSp = (textSizeSp + delta).coerceIn(OCR_TEXT_SIZE_MIN, OCR_TEXT_SIZE_MAX)
+        ocrPrefs.edit().putFloat("text_size_sp", textSizeSp).apply()
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        sheetPageIndex = null
+    }
+
+    LaunchedEffect(ocrModeActive, pagerState.currentPage, pageCount) {
+        if (ocrModeActive && pageCount > 0) {
+            OcrStore.ensureWindow(context, uri, displayName, pageCount, pagerState.currentPage)
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -95,45 +113,12 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
                 )
             }
-            if (hasOcrCache) {
-                TextButton(onClick = { showTextMode = !showTextMode }) {
-                    Text(if (showTextMode) "Lihat PDF" else "Lihat Teks")
-                }
-            } else {
-                TextButton(onClick = {
-                    scope.launch {
-                        OcrStore.process(context, uri, displayName)
-                        hasOcrCache = OcrStore.hasCache(context, displayName)
-                    }
-                }) {
-                    Text("Proses OCR")
-                }
+            TextButton(onClick = { ocrModeActive = !ocrModeActive }) {
+                Text(if (ocrModeActive) "OCR Aktif" else "OCR")
             }
         }
 
-        if (ocrStatus is OcrStatus.Processing) {
-            val st = ocrStatus as OcrStatus.Processing
-            LinearProgressIndicator(
-                progress = { st.currentPage.toFloat() / st.totalPages.toFloat() },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-            )
-            Text(
-                "Memproses OCR halaman ${st.currentPage}/${st.totalPages}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-        }
-
-        if (showTextMode) {
-            Text(
-                OcrStore.readCache(context, displayName),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium
-            )
-        } else if (pageCount == 0) {
+        if (pageCount == 0) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -143,7 +128,15 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
                 ) { pageIndex ->
-                    ZoomablePdfPage(uri = uri, pageIndex = pageIndex)
+                    ZoomablePdfPage(
+                        uri = uri,
+                        pageIndex = pageIndex,
+                        onTap = {
+                            if (ocrModeActive) {
+                                sheetPageIndex = pageIndex
+                            }
+                        }
+                    )
                 }
 
                 Text(
@@ -159,13 +152,106 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     color = androidx.compose.ui.graphics.Color.White
                 )
+
+                val sheetIndex = sheetPageIndex
+                if (sheetIndex != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f))
+                            .pointerInput(sheetIndex) {
+                                detectTapGestures(onTap = { sheetPageIndex = null })
+                            }
+                    )
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.3f)
+                            .pointerInput(sheetIndex) {
+                                detectTapGestures(onTap = { })
+                            },
+                        tonalElevation = 4.dp,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                            topStart = 12.dp,
+                            topEnd = 12.dp
+                        )
+                    ) {
+                        OcrTextSheet(
+                            context = context,
+                            displayName = displayName,
+                            pageIndex = sheetIndex,
+                            textSizeSp = textSizeSp,
+                            onDecrease = { changeTextSize(-OCR_TEXT_SIZE_STEP) },
+                            onIncrease = { changeTextSize(OCR_TEXT_SIZE_STEP) }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
+private fun OcrTextSheet(
+    context: Context,
+    displayName: String,
+    pageIndex: Int,
+    textSizeSp: Float,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    val readyKeys by OcrStore.readyKeys.collectAsState()
+    val key = "$displayName|$pageIndex"
+    val isReady = readyKeys.contains(key) || OcrStore.hasPageCache(context, displayName, pageIndex)
+
+    Column(Modifier.fillMaxSize().padding(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Ukuran Teks",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onDecrease, modifier = Modifier.width(48.dp)) {
+                Text("-", style = MaterialTheme.typography.titleLarge)
+            }
+            TextButton(onClick = onIncrease, modifier = Modifier.width(48.dp)) {
+                Text("+", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+
+        if (isReady) {
+            Text(
+                OcrStore.readPageCache(context, displayName, pageIndex),
+                fontSize = textSizeSp.sp,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 8.dp)
+            )
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Sedang memproses OCR halaman ini...",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
@@ -228,6 +314,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
             }
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { onTap() },
                     onDoubleTap = {
                         if (zoom > 1f) {
                             zoom = 1f

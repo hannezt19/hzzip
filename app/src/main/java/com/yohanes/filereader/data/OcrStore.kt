@@ -8,36 +8,45 @@ import android.os.ParcelFileDescriptor
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.File
 
 private const val OCR_RENDER_SCALE = 1.5f
-
-sealed class OcrStatus {
-    object Idle : OcrStatus()
-    data class Processing(val currentPage: Int, val totalPages: Int) : OcrStatus()
-    object Done : OcrStatus()
-    data class Error(val message: String) : OcrStatus()
-}
+private const val OCR_PREFETCH_WINDOW = 10
 
 object OcrStore {
-    private val _status = MutableStateFlow<OcrStatus>(OcrStatus.Idle)
-    val status: StateFlow<OcrStatus> = _status
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
-    private fun cacheFile(context: Context, displayName: String): File {
-        val dir = File(context.filesDir, "ocr_cache")
+    private val processingKeys = mutableSetOf<String>()
+
+    private val _readyKeys = MutableStateFlow<Set<String>>(emptySet())
+    val readyKeys: StateFlow<Set<String>> = _readyKeys
+
+    private fun keyOf(displayName: String, pageIndex: Int) = "$displayName|$pageIndex"
+
+    private fun cacheDir(context: Context, displayName: String): File {
+        val dir = File(context.filesDir, "ocr_cache/$displayName")
         if (!dir.exists()) dir.mkdirs()
-        return File(dir, "$displayName.txt")
+        return dir
     }
 
-    fun hasCache(context: Context, displayName: String): Boolean {
-        return cacheFile(context, displayName).exists()
+    private fun pageCacheFile(context: Context, displayName: String, pageIndex: Int): File {
+        return File(cacheDir(context, displayName), "page_$pageIndex.txt")
     }
 
-    fun readCache(context: Context, displayName: String): String {
-        val file = cacheFile(context, displayName)
+    fun hasPageCache(context: Context, displayName: String, pageIndex: Int): Boolean {
+        return pageCacheFile(context, displayName, pageIndex).exists()
+    }
+
+    fun readPageCache(context: Context, displayName: String, pageIndex: Int): String {
+        val file = pageCacheFile(context, displayName, pageIndex)
         return if (file.exists()) file.readText() else ""
     }
 
@@ -62,45 +71,43 @@ object OcrStore {
         }
     }
 
-    suspend fun process(context: Context, uri: Uri, displayName: String) {
-        _status.value = OcrStatus.Idle
-        var pfd: ParcelFileDescriptor? = null
-        var renderer: PdfRenderer? = null
-        val pageCount = try {
-            pfd = context.contentResolver.openFileDescriptor(uri, "r")
-            renderer = pfd?.let { PdfRenderer(it) }
-            renderer?.pageCount ?: 0
-        } catch (e: Exception) {
-            0
-        } finally {
-            renderer?.close()
-            pfd?.close()
-        }
-
-        if (pageCount == 0) {
-            _status.value = OcrStatus.Error("Gagal membaca jumlah halaman PDF")
+    private suspend fun processPage(context: Context, uri: Uri, displayName: String, pageIndex: Int) {
+        val key = keyOf(displayName, pageIndex)
+        if (hasPageCache(context, displayName, pageIndex)) {
+            if (!_readyKeys.value.contains(key)) {
+                _readyKeys.value = _readyKeys.value + key
+            }
             return
         }
-
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val fullText = StringBuilder()
-
+        if (processingKeys.contains(key)) return
+        processingKeys.add(key)
         try {
-            for (i in 0 until pageCount) {
-                _status.value = OcrStatus.Processing(currentPage = i + 1, totalPages = pageCount)
-                val bitmap = renderPageForOcr(context, uri, i)
-                if (bitmap != null) {
-                    val image = InputImage.fromBitmap(bitmap, 0)
-                    val result = recognizer.process(image).await()
-                    fullText.append(result.text)
-                    fullText.append("\n\n--- Halaman ${i + 1} ---\n\n")
-                    bitmap.recycle()
-                }
+            val bitmap = renderPageForOcr(context, uri, pageIndex)
+            if (bitmap != null) {
+                val image = InputImage.fromBitmap(bitmap, 0)
+                val result = recognizer.process(image).await()
+                pageCacheFile(context, displayName, pageIndex).writeText(result.text)
+                bitmap.recycle()
+                _readyKeys.value = _readyKeys.value + key
             }
-            cacheFile(context, displayName).writeText(fullText.toString())
-            _status.value = OcrStatus.Done
         } catch (e: Exception) {
-            _status.value = OcrStatus.Error(e.message ?: "OCR gagal")
+            // dilewati, halaman ini akan dicoba lagi saat window OCR mencakupnya lagi
+        } finally {
+            processingKeys.remove(key)
+        }
+    }
+
+    fun ensureWindow(context: Context, uri: Uri, displayName: String, pageCount: Int, currentPage: Int) {
+        if (pageCount <= 0) return
+        val targets = if (pageCount <= OCR_PREFETCH_WINDOW) {
+            0 until pageCount
+        } else {
+            currentPage until (currentPage + OCR_PREFETCH_WINDOW).coerceAtMost(pageCount)
+        }
+        scope.launch {
+            for (p in targets) {
+                processPage(context, uri, displayName, p)
+            }
         }
     }
 }
