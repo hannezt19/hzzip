@@ -177,7 +177,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
     }
 
     val bmp = bitmap
-    Box(
+    BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .clipToBounds()
@@ -192,10 +192,28 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int) {
                             val panChange = event.calculatePan()
                             val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
                             zoom = newZoom
-                            if (newZoom > 1f) {
-                                val maxOffset = (newZoom - 1f) * 800f
-                                offsetX = (offsetX + panChange.x).coerceIn(-maxOffset, maxOffset)
-                                offsetY = (offsetY + panChange.y).coerceIn(-maxOffset, maxOffset)
+                            val currentBmp = bmp
+                            if (newZoom > 1f && currentBmp != null) {
+                                val containerW = constraints.maxWidth.toFloat()
+                                val containerH = constraints.maxHeight.toFloat()
+                                val bitmapAspect = currentBmp.width.toFloat() / currentBmp.height.toFloat()
+                                val containerAspect = containerW / containerH
+                                // ukuran halaman saat zoom = 1 (hasil ContentScale.Fit)
+                                val fittedW: Float
+                                val fittedH: Float
+                                if (bitmapAspect > containerAspect) {
+                                    fittedW = containerW
+                                    fittedH = containerW / bitmapAspect
+                                } else {
+                                    fittedH = containerH
+                                    fittedW = containerH * bitmapAspect
+                                }
+                                val scaledW = fittedW * newZoom
+                                val scaledH = fittedH * newZoom
+                                val maxOffsetX = ((scaledW - containerW) / 2f).coerceAtLeast(0f)
+                                val maxOffsetY = ((scaledH - containerH) / 2f).coerceAtLeast(0f)
+                                offsetX = (offsetX + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                offsetY = (offsetY + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
                             } else {
                                 offsetX = 0f
                                 offsetY = 0f
