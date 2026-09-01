@@ -41,7 +41,6 @@ import com.yohanes.filereader.data.XlsxParser
 import com.yohanes.filereader.data.XlsxSheet
 import com.yohanes.filereader.data.XlsxWriter
 import com.yohanes.filereader.data.FavoritesStore
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.collectAsState
 

@@ -21,6 +21,9 @@ import com.yohanes.filereader.FileType
  * History undo/redo dibatasi supaya tidak boros memori di device RAM kecil.
  */
 @Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+
 fun CodeEditorScreen(
     uri: android.net.Uri,
     displayName: String,
@@ -83,7 +86,7 @@ fun CodeEditorScreen(
             val isFav = favorites.contains(favKey)
             androidx.compose.material3.IconButton(onClick = { com.yohanes.filereader.data.FavoritesStore.toggle(favKey) }) {
                 androidx.compose.material3.Icon(
-                    androidx.compose.material.icons.Icons.Filled.Star,
+                    Icons.Filled.Star,
                     contentDescription = "Favorit",
                     tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
                 )
