@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
             FileType.XLSX -> com.yohanes.filereader.ui.XlsxViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.UNKNOWN -> UnsupportedState(currentName)
             else -> CodeEditorScreen(
+                uri = uri,
                 displayName = currentName,
                 fileType = currentType,
                 initialContent = currentContent,

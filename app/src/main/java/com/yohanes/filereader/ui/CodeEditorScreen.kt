@@ -22,6 +22,7 @@ import com.yohanes.filereader.FileType
  */
 @Composable
 fun CodeEditorScreen(
+    uri: android.net.Uri,
     displayName: String,
     fileType: FileType,
     initialContent: String,
@@ -77,6 +78,17 @@ fun CodeEditorScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(displayName, maxLines = 1, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            val favKey = uri.path ?: uri.toString()
+            val favorites by com.yohanes.filereader.data.FavoritesStore.favorites.collectAsState()
+            val isFav = favorites.contains(favKey)
+            androidx.compose.material3.IconButton(onClick = { com.yohanes.filereader.data.FavoritesStore.toggle(favKey) }) {
+                androidx.compose.material3.Icon(
+                    androidx.compose.material.icons.Icons.Filled.Star,
+                    contentDescription = "Favorit",
+                    tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
+                )
+            }
+            Spacer(Modifier.width(4.dp))
             IconTextButton("Undo", enabled = undoStack.isNotEmpty()) {
                 if (undoStack.isNotEmpty()) {
                     redoStack.addLast(field.text)
