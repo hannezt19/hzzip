@@ -204,7 +204,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f))
+                            .background(androidx.compose.ui.graphics.Color(0xFF121212))
                             .pointerInput(ujiTeksText) {
                                 detectTapGestures(onTap = { ujiTeksResult = null })
                             }
