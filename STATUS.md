@@ -1,61 +1,58 @@
 # STATUS - FileReaderApp
 
-> Update terakhir: Mode Baca dasar sudah jalan (modal saklar, reflow gambar+teks). Beberapa jebakan baru ditemukan & diperbaiki: sortByPosition PDFBox terbukti salah untuk 2-kolom (di-revert), edge-to-edge targetSdk 35 nutupin top bar (fix statusBarsPadding), gambar dobel dengan teks (fix pakai extractMainImage, bukan render seluruh halaman).
+> Update terakhir: fondasi ekstraksi teks PDF untuk Mode Baca selesai. Klarifikasi penting: fitur "OCR" pertama BUKAN yang dimaksud user - yang dimaksud adalah "Mode Baca" (reflow). Desain final Mode Baca sudah disepakati lengkap, coding UI sungguhan belum dimulai.
 > File ini isinya keputusan desain penting + catatan teknis biar sesi berikutnya (akun mana pun) gak mengulang diskusi/kesalahan yang sama.
 > Kalau file ini diupdate: tambahkan keputusan/catatan baru di bagian yang sesuai, jangan hapus yang lama kecuali sudah tidak relevan.
 
 ## Keputusan Desain Penting
-- **Arsitektur**: Jetpack Compose (native Kotlin), bukan Capacitor/hybrid - demi performa di device RAM kecil
-- **Target device & minSdk**: HANYA Motorola Moto G45 (Android 14+), minSdk 34, targetSdk 35, compileSdk 35
-- **xlsx**: parser & writer dibikin sendiri (baca/tulis ZIP+XML manual), BUKAN pakai Apache POI - terlalu berat untuk device RAM kecil
-- **Favorit**: status favorit disimpan TERPISAH dari database file utama (SharedPreferences via FavoritesStore.kt) - kalau disatukan, akan ke-reset tiap scan ulang
-- **Kategori Beranda**: PDF, Gambar, Excel, Teks/Kode (gabungan JSON/HTML/JS/TXT/CSS/dll), Direktori, Favorit
+- **Arsitektur**: Jetpack Compose (native Kotlin), bukan Capacitor/hybrid - demi performa di device RAM kecil (target: HANYA Motorola Moto G45)
+- **SDK**: minSdk 34, targetSdk/compileSdk 35 (dinaikkan dari minSdk 28 untuk dukung PdfBox-Android & fitur Mode Baca; device lama Android 9/10 tidak lagi jadi target)
+- **xlsx**: parser & writer dibikin sendiri (baca/tulis ZIP+XML manual), BUKAN pakai Apache POI - karena POI terlalu berat & berisiko masalah build di Android
+- **Favorit**: status favorit disimpan TERPISAH dari database file utama (SharedPreferences via FavoritesStore.kt), karena Room DB selalu di-scan-ulang & ditulis-ulang tiap Beranda dibuka
+- **Kategori Beranda**: PDF, Gambar, Excel, Teks/Kode (gabungan JSON/HTML/JS/TXT/CSS/dll), Direktori (info penyimpanan, bukan file), Favorit
 - **Penandaan favorit**: dilakukan dari DALAM viewer (tombol bintang), bukan dari list Beranda
-- **Ekstraksi teks/gambar PDF**: pakai PdfBox-Android 2.0.27.0 (bukan Pdfium-Android) - kemampuan ekstraksi teks & gambar tertanamnya lebih matang, Pdfium fokus render bukan ekstraksi
-- **OCR (implementasi lama, per-halaman + prefetch)**: SUDAH DIGANTIKAN oleh saklar "Mode Baca" - tombol OCR terpisah sudah dihapus dari UI, tapi OcrStore.kt masih ada dan akan dipakai lagi sebagai fallback (lihat TODO.md)
+- **Ekstraksi teks PDF**: pakai PdfBox-Android 2.0.27.0 (BUKAN Pdfium-Android) karena kemampuan ekstraksi teks lebih matang/terstruktur
+- **PENTING - sortByPosition PDFTextStripper**: JANGAN diaktifkan. Sudah diuji ke PDF nyata (soal ujian 2 kolom) dan TERBUKTI MENGACAK urutan baris antar kolom. Default order PDFTextStripper sudah benar (ikut urutan penulisan asli di file PDF). Jangan aktifkan lagi kecuali ada bukti kuat baru dari pengujian nyata.
+- **Edge-to-edge Android 15**: setelah targetSdk naik ke 35, top bar ketutup status bar - fix pakai `statusBarsPadding()` di Column utama layar viewer
 
-## Progres Implementasi Mode Baca
-Status: fondasi dasar SUDAH JALAN dan dites di device nyata. Detail lengkap desain (Translate, TTS, kontrol tampilan) masih di bagian "Rencana Desain" di bawah - belum semua diimplementasi, lihat TODO.md untuk urutan pengerjaan berikutnya.
+## Klarifikasi Penting: "OCR" vs "Mode Baca"
+Fitur OCR pertama (tombol manual -> bottom sheet teks terpisah per halaman) BUKAN yang dimaksud user sejak awal - istilah "OCR" sendiri user tidak paham/tidak pakai. Yang diinginkan sejak awal: tampilan **reflow** (gambar+teks PDF ditata ulang jadi satu alur baca rapi, dark background), sesuai referensi custom yang dibuat sendiri oleh user (bukan dari aplikasi tertentu) - bukan panel teks kecil terpisah dari gambar.
 
-Yang sudah jadi:
-- Tap layar membuka modal berisi saklar "Mode Baca" (menggantikan sepenuhnya panel OCR lama)
-- PdfTextExtractor.kt: `extractPageText()` (teks per halaman via PDFTextStripper, default order TANPA sortByPosition) dan `extractMainImage()` (ambil gambar tertanam terbesar per halaman via PDResources/PDImageXObject)
-- ReflowPage di PdfViewerScreen.kt: menampilkan gambar utama (bersih, bukan screenshot seluruh halaman) lalu teks di bawahnya, background gelap, bisa discroll
-- Tombol "Uji Teks" (SEMENTARA, untuk diagnostik) - akan dihapus setelah kontrol dasar Mode Baca lengkap
+### Desain Final "Mode Baca" (disepakati, belum dikoding)
+- Tap layar HANYA membuka modal/panel (tidak langsung ubah tampilan)
+- Di dalam modal ada saklar **"Mode Baca"**: nyala = tampilan jadi reflow (gambar+teks ditata rapi), mati = balik ke PDF normal. User tidak perlu tahu istilah "OCR" - itu jadi mesin di belakang layar, sistem otomatis deteksi teks asli PDF vs OCR cadangan per halaman
+- Tiap gambar dalam Mode Baca punya tombol expand kecil di pojok (ikon panah menyudut keluar ala fullscreen) - tap masuk fullscreen dengan pinch-zoom/pan (pakai ulang `ZoomablePdfPage` yang sudah ada), tombol berubah jadi ikon compress untuk kembali ke alur baca
+- Kalau 1 halaman punya >1 gambar tertanam, saat expand aktif user bisa geser lihat gambar lain di halaman itu (bukan cuma gambar utama)
+- Pilihan navigasi **Scroll** atau **Swipe** (di dalam modal) = pengaturan GLOBAL, berlaku untuk PDF normal MAUPUN Mode Baca - bukan cuma khusus Mode Baca
+- Indikator halaman ("N/total") tetap selalu terlihat, posisi di pojok kanan atas (posisi tombol OCR lama)
+- Semua mode (OCR lama, Mode Baca) boleh aktif bersamaan, tidak eksklusif
 
-Yang belum (lihat TODO.md untuk urutan): fallback OCR untuk halaman teks kosong, kontrol Ukuran Teks/Warna Latar/Kontras/Scroll-Swipe di modal, tombol expand/fullscreen per gambar dengan galeri gambar tersembunyi (kalau 1 halaman punya >1 gambar tertanam), Translate, TTS.
+### Isi Modal/Panel Final
+Saklar "Mode Baca" (on/off), kontrol Kontras, pilihan Warna Latar, kontrol Ukuran Teks (-/+, simpan permanen di Pengaturan), pilihan navigasi Scroll/Swipe
 
-## Rencana Desain: Mode Baca (reflow) + Translate + TTS (detail lengkap)
-**Mode Baca:**
-- Saklar "Mode Baca" di modal: nyala = reflow, mati = PDF normal. User TIDAK perlu tahu istilah "OCR"
-- Tiap gambar dalam Mode Baca akan punya tombol expand kecil di pojok (ikon panah menyudut keluar ala fullscreen Google Street View) - tap untuk fullscreen dengan pinch-zoom/pan; kalau halaman punya >1 gambar tertanam, sebelum di-zoom user bisa geser/slide lihat gambar lain di halaman itu dulu
-- Isi modal lengkap (target akhir): saklar "Mode Baca", kontrol Kontras, pilihan Warna Latar, kontrol Ukuran Teks (-/+, permanen), pilihan navigasi Scroll/Swipe
-- Indikator halaman ("N/total") tetap selalu terlihat
-- Scroll vs Swipe mengatur cara pindah halaman, berlaku untuk PDF normal MAUPUN Mode Baca
+### Rencana Translate (belum dikoding)
+- Saklar tambahan di panel yang sama, aktif kalau Mode Baca nyala
+- ML Kit Translate on-device (offline, bukan API online)
+- Bahasa tujuan tetap Bahasa Indonesia (bukan pilihan bebas)
+- Teks asli DIGANTI langsung jadi teks terjemahan (bukan ditampilkan berdampingan)
 
-**Translate (saklar tambahan di modal, aktif kalau Mode Baca nyala):**
-- ML Kit Translate on-device (offline), bahasa tujuan tetap Bahasa Indonesia, teks asli DIGANTI langsung (bukan berdampingan)
-
-**TTS (bagian dari Pengaturan):**
-- TextToSpeech bawaan Android (offline), baca teks yang sedang ditampilkan
-- Kontrol Putar/Jeda + kecepatan bicara di Pengaturan, highlight kata TIDAK diperlukan
-- Auto-scroll per PARAGRAF (bukan per kata), posisi paragraf yang dibaca di bagian ATAS layar
-- Mode Scroll: baca terus tanpa putus. Mode Swipe: baca 1 halaman lalu berhenti, TAPI kalau user geser manual ke halaman berikutnya sementara TTS masih aktif, otomatis lanjut baca
+### Rencana TTS (belum dikoding)
+- Pakai TextToSpeech bawaan Android (offline, gratis)
+- Baca teks yang sedang ditampilkan: versi terjemahan kalau Translate nyala, teks asli kalau mati
+- Kontrol Play/Jeda + kecepatan bicara di bagian Pengaturan (bukan di panel utama)
+- Auto-lanjut halaman terikat mode navigasi: Scroll = baca lanjut terus tanpa putus; Swipe = TTS cuma baca halaman yang dibuka, TAPI kalau user geser manual saat TTS aktif, otomatis lanjut baca halaman baru itu
+- TIDAK perlu highlight kata/kalimat saat dibacakan (diputuskan tidak perlu, biar ringan)
+- Auto-scroll dilacak per PARAGRAF (bukan per kata), posisi paragraf aktif diletakkan di bagian atas layar yang kelihatan
 
 ## Catatan Teknis / Jebakan yang Sudah Ditemukan
-- **Ikon Compose Material**: HANYA pakai ikon di paket dasar (`material-icons-core`). JANGAN pakai `Icons.Default.Save` dll yang butuh `material-icons-extended` - bikin gagal build.
-- **TopAppBar / Scaffold**: experimental di Material3, wajib `@OptIn(ExperimentalMaterial3Api::class)`.
-- **Parameter wajib baru**: kalau menambah parameter wajib ke Composable, WAJIB cek & update semua tempat yang memanggilnya.
-- **Pan/gesture setelah zoom**: baca state terbaru langsung dari `remember`/State, jangan lewat closure basi.
-- **Proses patch kode**: perubahan kecil pakai python3 (cari old string persis, cek jumlah match sebelum percaya hasilnya). Perubahan besar/file baru pakai heredoc `cat > file << 'EOF' ... EOF` - WAJIB disalin sekaligus sebagai satu blok, jangan terpisah/dipotong.
-- **Environment kerja**: semua dari HP via Termux, tanpa Android Studio. Build APK lewat GitHub Actions. WAJIB commit+push lalu cek hasil build sebelum lanjut.
-- **File besar**: setelah heredoc, selalu `wc -l` dan `cat -n` untuk pastikan file tidak terpotong/rusak.
-- **Komunikasi desain**: user punya kosakata teknis terbatas dalam Bahasa Indonesia - WAJIB jelaskan istilah asing dengan format "istilah (arti dalam kurung)", dan diskusikan tuntas dulu sebelum coding fitur kompleks/ambigu.
-- **PDFTextStripper.sortByPosition**: JANGAN diaktifkan tanpa bukti kuat dari pengujian nyata. Sempat dicoba untuk membantu urutan baca dokumen 2-kolom, TERNYATA MALAH MENGACAK urutan baris antar kolom yang sejajar tinggi. Default order (mengikuti urutan penulisan asli di file PDF) justru sudah benar untuk kasus 2-kolom yang diuji. Sudah di-revert, pakai default order.
-- **Edge-to-edge di targetSdk 35 (Android 15)**: sistem otomatis memaksa app digambar sampai ke belakang status bar, bikin top bar/tombol ketutup dan tidak bisa ditekan. Solusi: tambahkan `.statusBarsPadding()` di root Composable tiap layar (bukan cuma PdfViewerScreen - CEK LAYAR LAIN juga kalau muncul masalah serupa).
-- **Gambar dobel dengan teks di Mode Baca**: kalau ambil gambar dengan cara render/screenshot SELURUH halaman PDF (`renderSinglePage`), teks yang ada di halaman itu ikut kebawa masuk ke dalam gambar - jadi teksnya keliatan dobel (sekali di dalam gambar, sekali lagi di teks hasil ekstraksi di bawahnya). Solusi: ekstrak gambar yang BENAR-BENAR TERTANAM (embedded) di dalam PDF pakai `PDResources`/`PDImageXObject` (fungsi `extractMainImage` di PdfTextExtractor.kt), bukan screenshot seluruh halaman.
-- **Package PdfBox-Android**: nama package Java-nya `com.tom_roush.pdfbox.*` (pakai underscore), BUKAN `com.tom-roush.pdfbox.*` - beda dari koordinat Gradle-nya (`com.tom-roush:pdfbox-android`) yang pakai strip.
-- **Panel/modal dengan konten yang bisa discroll**: gestur tap-to-dismiss (tap di luar buat nutup) sering konflik dengan gestur scroll di dalamnya. Solusi: sediakan tombol "Tutup" eksplisit, jangan cuma andalkan tap-to-dismiss untuk panel berisi teks panjang yang bisa discroll.
+- **Ikon Compose Material**: HANYA pakai ikon dari `material-icons-core`. JANGAN pakai `Icons.Default.Save`, `Icons.Outlined.StarBorder`, dll - butuh dependency `material-icons-extended` yang tidak ada di project & bikin gagal build. Kalau butuh ikon "belum favorit", pakai `Icons.Filled.Star` sama tapi beda warna/tint.
+- **TopAppBar / Scaffold**: API experimental di Material3, wajib `@OptIn(ExperimentalMaterial3Api::class)` di atas Composable yang memakainya.
+- **Parameter wajib baru**: kalau menambah parameter wajib (non-default) ke Composable, WAJIB cek & update semua tempat yang memanggilnya (biasanya di MainActivity.kt).
+- **Proses patch kode**: semua edit lewat script `python3` (bukan `sed`/manual edit) dengan pola cari `old` string persis, ganti ke `new`, print jumlah berhasil (misal "2/2") - WAJIB dicek sebelum commit, kalau hasilnya "0/1" berarti teks yang dicari tidak ketemu persis, file BELUM berubah.
+- **Environment kerja**: tidak ada Android Studio/laptop, semua dari HP via Termux. Build APK selalu lewat GitHub Actions. Setiap selesai patch, WAJIB commit+push lalu cek hasil build di GitHub Actions sebelum lanjut.
+- **File besar**: kalau bikin file baru panjang (100+ baris) lewat heredoc, selalu cek `wc -l` dan `tail -5` untuk pastikan file tidak terpotong.
 
-## Bug Diketahui (belum diperbaiki)
-- (kosong saat ini)
+## Bug Diketahui
+- ~~Kartu "Gambar" 0 file~~ - SUDAH DIPERBAIKI ✅ (sekarang deteksi 22218 file)
+- ~~Zoom PDF melebihi frame~~ - SUDAH DIPERBAIKI ✅
+- ~~Pan tidak berfungsi setelah zoom~~ - SUDAH DIPERBAIKI ✅ (fix: baca state bitmap langsung, bukan closure basi)
