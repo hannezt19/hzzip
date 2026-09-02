@@ -244,7 +244,7 @@ private fun ReflowPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     var pageText by remember(pageIndex) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(pageIndex) {
-        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+        bitmap = PdfTextExtractor.extractMainImage(context, uri, pageIndex)
         pageText = PdfTextExtractor.extractPageText(context, uri, pageIndex)
     }
 
