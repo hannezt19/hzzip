@@ -29,6 +29,7 @@ object PdfTextExtractor {
             val doc = document ?: return null
             if (pageIndex < 0 || pageIndex >= doc.numberOfPages) return null
             val stripper = PDFTextStripper()
+            stripper.sortByPosition = true
             stripper.startPage = pageIndex + 1
             stripper.endPage = pageIndex + 1
             stripper.getText(doc).trim()
