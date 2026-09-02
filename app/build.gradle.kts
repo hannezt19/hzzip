@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.yohanes.filereader"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.yohanes.filereader"
-        minSdk = 28
-        targetSdk = 34
+        minSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -74,4 +74,5 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }
