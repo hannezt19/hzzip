@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.OcrStore
+import com.yohanes.filereader.data.PdfTextExtractor
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
@@ -79,6 +80,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var ocrModeActive by remember { mutableStateOf(false) }
     var sheetPageIndex by remember { mutableStateOf<Int?>(null) }
     var textSizeSp by remember { mutableFloatStateOf(ocrPrefs.getFloat("text_size_sp", 16f)) }
+    var ujiTeksResult by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     fun changeTextSize(delta: Float) {
         textSizeSp = (textSizeSp + delta).coerceIn(OCR_TEXT_SIZE_MIN, OCR_TEXT_SIZE_MAX)
@@ -115,6 +118,14 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
             }
             TextButton(onClick = { ocrModeActive = !ocrModeActive }) {
                 Text(if (ocrModeActive) "OCR Aktif" else "OCR")
+            }
+            TextButton(onClick = {
+                scope.launch {
+                    val text = PdfTextExtractor.extractPageText(context, uri, pagerState.currentPage)
+                    ujiTeksResult = text?.ifBlank { "(kosong - kemungkinan halaman hasil scan)" } ?: "(gagal ekstrak teks)"
+                }
+            }) {
+                Text("Uji Teks")
             }
         }
 
@@ -184,6 +195,28 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             textSizeSp = textSizeSp,
                             onDecrease = { changeTextSize(-OCR_TEXT_SIZE_STEP) },
                             onIncrease = { changeTextSize(OCR_TEXT_SIZE_STEP) }
+                        )
+                    }
+                }
+
+                val ujiTeksText = ujiTeksResult
+                if (ujiTeksText != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f))
+                            .pointerInput(ujiTeksText) {
+                                detectTapGestures(onTap = { ujiTeksResult = null })
+                            }
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            ujiTeksText,
+                            color = androidx.compose.ui.graphics.Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
                         )
                     }
                 }
