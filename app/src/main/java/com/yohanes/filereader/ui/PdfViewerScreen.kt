@@ -42,9 +42,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.foundation.lazy.*
 import com.yohanes.filereader.data.ReaderSettingsStore
 import com.yohanes.filereader.data.ReaderSettings
 import com.yohanes.filereader.data.BacaWarnaLatar
+import com.yohanes.filereader.data.NavigasiMode
 import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
@@ -117,31 +119,72 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 CircularProgressIndicator()
             }
         } else {
+            val scrollListState = rememberLazyListState()
+            LaunchedEffect(readerSettings.navMode, scrollListState.firstVisibleItemIndex) {
+                if (readerSettings.navMode == NavigasiMode.SCROLL) {
+                    prefs.edit().putInt(displayName, scrollListState.firstVisibleItemIndex).apply()
+                    settingsModalOpen = false
+                }
+            }
+            val currentPageNumber = if (readerSettings.navMode == NavigasiMode.SWIPE) {
+                pagerState.currentPage + 1
+            } else {
+                scrollListState.firstVisibleItemIndex + 1
+            }
+
             Box(modifier = Modifier.fillMaxSize()) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize()
-                ) { pageIndex ->
-                    if (modeBacaActive) {
-                        ReflowPage(
-                            uri = uri,
-                            displayName = displayName,
-                            pageCount = pageCount,
-                            pageIndex = pageIndex,
-                            settings = readerSettings,
-                            onTap = { settingsModalOpen = true }
-                        )
-                    } else {
-                        ZoomablePdfPage(
-                            uri = uri,
-                            pageIndex = pageIndex,
-                            onTap = { settingsModalOpen = true }
-                        )
+                if (readerSettings.navMode == NavigasiMode.SWIPE) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { pageIndex ->
+                        if (modeBacaActive) {
+                            ReflowPage(
+                                uri = uri,
+                                displayName = displayName,
+                                pageCount = pageCount,
+                                pageIndex = pageIndex,
+                                settings = readerSettings,
+                                onTap = { settingsModalOpen = true }
+                            )
+                        } else {
+                            ZoomablePdfPage(
+                                uri = uri,
+                                pageIndex = pageIndex,
+                                onTap = { settingsModalOpen = true }
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        state = scrollListState,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(pageCount) { pageIndex ->
+                            Box(modifier = Modifier.fillMaxWidth().fillParentMaxHeight()) {
+                                if (modeBacaActive) {
+                                    ReflowPage(
+                                        uri = uri,
+                                        displayName = displayName,
+                                        pageCount = pageCount,
+                                        pageIndex = pageIndex,
+                                        settings = readerSettings,
+                                        onTap = { settingsModalOpen = true }
+                                    )
+                                } else {
+                                    ZoomablePdfPage(
+                                        uri = uri,
+                                        pageIndex = pageIndex,
+                                        onTap = { settingsModalOpen = true }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 Text(
-                    "${pagerState.currentPage + 1} / $pageCount",
+                    "$currentPageNumber / $pageCount",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier
                         .align(androidx.compose.ui.Alignment.TopEnd)
@@ -184,7 +227,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             settings = readerSettings,
                             onTextSizeChange = { ReaderSettingsStore.setTextSize(context, it) },
                             onContrastChange = { ReaderSettingsStore.setContrast(context, it) },
-                            onWarnaLatarChange = { ReaderSettingsStore.setWarnaLatar(context, it) }
+                            onWarnaLatarChange = { ReaderSettingsStore.setWarnaLatar(context, it) },
+                            onNavModeChange = { ReaderSettingsStore.setNavMode(context, it) }
                         )
                     }
                 }
@@ -201,7 +245,8 @@ private fun SettingsPanel(
     settings: ReaderSettings,
     onTextSizeChange: (Float) -> Unit,
     onContrastChange: (Float) -> Unit,
-    onWarnaLatarChange: (BacaWarnaLatar) -> Unit
+    onWarnaLatarChange: (BacaWarnaLatar) -> Unit,
+    onNavModeChange: (NavigasiMode) -> Unit
 ) {
     Column(
         Modifier
@@ -223,29 +268,30 @@ private fun SettingsPanel(
                 onCheckedChange = onModeBacaChange
             )
         }
-        Text(
-            "Menata ulang gambar dan teks halaman ini agar lebih nyaman dibaca.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
-        )
 
-        Text("Ukuran Teks", style = MaterialTheme.typography.titleSmall)
         Row(
-            Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
+            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text("Ukuran Teks", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
             IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
                 Text("-", style = MaterialTheme.typography.titleLarge)
             }
             Text(
                 "${settings.textSizeSp.toInt()} sp",
-                modifier = Modifier.weight(1f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
             IconButton(onClick = { onTextSizeChange(settings.textSizeSp + 2f) }) {
                 Text("+", style = MaterialTheme.typography.titleLarge)
             }
         }
+
+        Text(
+            "Menata ulang gambar dan teks halaman ini agar lebih nyaman dibaca.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
 
         Text("Kontras Gambar", style = MaterialTheme.typography.titleSmall)
         Slider(
@@ -271,6 +317,30 @@ private fun SettingsPanel(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(warna.label, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+
+        Text(
+            "Navigasi Halaman",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NavigasiMode.values().forEach { mode ->
+                val selected = settings.navMode == mode
+                OutlinedButton(
+                    onClick = { onNavModeChange(mode) },
+                    colors = if (selected) {
+                        ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    } else {
+                        ButtonDefaults.outlinedButtonColors()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(mode.label, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -320,6 +390,9 @@ private fun ReflowPage(
         )
     }
 
+    var fullscreenImage by remember(pageIndex) { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -331,12 +404,30 @@ private fun ReflowPage(
     ) {
         val bmp = bitmap
         if (bmp != null) {
-            Image(
-                bitmap = bmp.asImageBitmap(),
-                contentDescription = "Halaman ${pageIndex + 1}",
-                colorFilter = ColorFilter.colorMatrix(contrastMatrix),
-                modifier = Modifier.fillMaxWidth()
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = "Halaman ${pageIndex + 1}",
+                    colorFilter = ColorFilter.colorMatrix(contrastMatrix),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    "\u2922",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(
+                            androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { fullscreenImage = true })
+                        }
+                )
+            }
         } else if (!imageLoadDone) {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -394,29 +485,52 @@ private fun ReflowPage(
             }
         }
     }
+
+    if (fullscreenImage && bitmap != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black)
+        ) {
+            ZoomableImageBox(
+                bitmap = bitmap,
+                contentDescription = "Halaman ${pageIndex + 1} diperbesar",
+                onTap = {}
+            )
+            Text(
+                "\u2715",
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { fullscreenImage = false })
+                    }
+            )
+        }
+    }
+    }
 }
 
 @Composable
-private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
-    val context = LocalContext.current
-    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
-
+private fun ZoomableImageBox(
+    bitmap: Bitmap?,
+    contentDescription: String,
+    onTap: () -> Unit
+) {
     var zoom by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var containerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
-    LaunchedEffect(pageIndex) {
-        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
-    }
-
-    val bmp = bitmap
     Box(
         Modifier
             .fillMaxSize()
             .clipToBounds()
             .onGloballyPositioned { coordinates -> containerSize = coordinates.size }
-            .pointerInput(Unit) {
+            .pointerInput(bitmap) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     do {
@@ -433,7 +547,6 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
                                 val containerH = containerSize.height.toFloat()
                                 val bitmapAspect = currentBmp.width.toFloat() / currentBmp.height.toFloat()
                                 val containerAspect = containerW / containerH
-                                // ukuran halaman saat zoom = 1 (hasil ContentScale.Fit)
                                 val fittedW: Float
                                 val fittedH: Float
                                 if (bitmapAspect > containerAspect) {
@@ -458,7 +571,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
                     } while (event.changes.any { it.pressed })
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(bitmap) {
                 detectTapGestures(
                     onTap = { onTap() },
                     onDoubleTap = {
@@ -474,10 +587,10 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
             },
         contentAlignment = Alignment.Center
     ) {
-        if (bmp != null) {
+        if (bitmap != null) {
             Image(
-                bitmap = bmp.asImageBitmap(),
-                contentDescription = "Halaman ${pageIndex + 1}",
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = contentDescription,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(
@@ -491,6 +604,22 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
             CircularProgressIndicator()
         }
     }
+}
+
+@Composable
+private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
+    val context = LocalContext.current
+    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(pageIndex) {
+        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+    }
+
+    ZoomableImageBox(
+        bitmap = bitmap,
+        contentDescription = "Halaman ${pageIndex + 1}",
+        onTap = onTap
+    )
 }
 
 private fun renderSinglePage(context: Context, uri: Uri, pageIndex: Int, scale: Float): Bitmap? {
