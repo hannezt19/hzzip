@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.PdfTextExtractor
+import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
@@ -121,6 +122,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     if (modeBacaActive) {
                         ReflowPage(
                             uri = uri,
+                            displayName = displayName,
+                            pageCount = pageCount,
                             pageIndex = pageIndex,
                             onTap = { settingsModalOpen = true }
                         )
@@ -238,15 +241,23 @@ private fun SettingsPanel(
 }
 
 @Composable
-private fun ReflowPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
+private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
-    var pageText by remember(pageIndex) { mutableStateOf<String?>(null) }
+    var extractedText by remember(pageIndex) { mutableStateOf<String?>(null) }
+    val readyKeys by OcrStore.readyKeys.collectAsState()
 
     LaunchedEffect(pageIndex) {
         bitmap = PdfTextExtractor.extractMainImage(context, uri, pageIndex)
-        pageText = PdfTextExtractor.extractPageText(context, uri, pageIndex)
+        val text = PdfTextExtractor.extractPageText(context, uri, pageIndex)
+        extractedText = text
+        if (text.isNullOrBlank()) {
+            OcrStore.ensureWindow(context, uri, displayName, pageCount, pageIndex)
+        }
     }
+
+    val ocrKey = "$displayName|$pageIndex"
+    val ocrReady = readyKeys.contains(ocrKey) || OcrStore.hasPageCache(context, displayName, pageIndex)
 
     Column(
         modifier = Modifier
@@ -270,33 +281,51 @@ private fun ReflowPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
             }
         }
 
-        val text = pageText
-        if (text == null) {
-            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Memuat teks halaman...",
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+        val text = extractedText
+        when {
+            text == null -> {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Memuat teks halaman...",
+                            color = androidx.compose.ui.graphics.Color.White,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
-        } else if (text.isBlank()) {
-            Text(
-                "(Teks halaman ini belum tersedia)",
-                color = androidx.compose.ui.graphics.Color.Gray,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            )
-        } else {
-            Text(
-                text,
-                color = androidx.compose.ui.graphics.Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            )
+            text.isNotBlank() -> {
+                Text(
+                    text,
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+            }
+            ocrReady -> {
+                val ocrText = OcrStore.readPageCache(context, displayName, pageIndex)
+                Text(
+                    ocrText.ifBlank { "(Teks halaman ini belum tersedia)" },
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+            }
+            else -> {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Memproses OCR halaman ini...",
+                            color = androidx.compose.ui.graphics.Color.White,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
         }
     }
 }
