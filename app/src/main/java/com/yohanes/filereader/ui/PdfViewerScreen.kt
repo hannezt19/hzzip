@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.pager.HorizontalPager
@@ -166,7 +167,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .fillMaxHeight(0.3f)
+                            .fillMaxHeight(0.6f)
+                            .navigationBarsPadding()
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { })
                             },
