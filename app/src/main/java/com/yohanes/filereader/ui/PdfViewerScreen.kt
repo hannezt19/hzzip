@@ -201,22 +201,29 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 
                 val ujiTeksText = ujiTeksResult
                 if (ujiTeksText != null) {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(androidx.compose.ui.graphics.Color(0xFF121212))
-                            .pointerInput(ujiTeksText) {
-                                detectTapGestures(onTap = { ujiTeksResult = null })
-                            }
-                            .padding(16.dp)
+                            .statusBarsPadding()
                     ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(8.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { ujiTeksResult = null }) {
+                                Text("Tutup", color = androidx.compose.ui.graphics.Color.White)
+                            }
+                        }
                         Text(
                             ujiTeksText,
                             color = androidx.compose.ui.graphics.Color.White,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                                .weight(1f)
                                 .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp)
                         )
                     }
                 }
