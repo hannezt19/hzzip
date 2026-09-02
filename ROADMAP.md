@@ -1,38 +1,42 @@
 # Roadmap - FileReaderApp
 
-> Update terakhir: Dark theme toggle selesai (ThemeStore.kt + SharedPreferences, MaterialTheme ikut colorScheme, kartu Beranda pakai warna tema jadi otomatis ikut gelap/terang) & OCR untuk PDF hasil scan sudah berjalan. Selanjutnya: fix bug zoom PDF.
-> Kalau file ini diupdate, tulis di baris "Update terakhir" di atas: apa yang baru selesai, biar sesi berikutnya (akun mana pun) langsung tahu titik pijaknya tanpa scroll riwayat chat.
+> Update terakhir: bug Gambar 0 file, dark theme, bug zoom PDF, dan bug pan PDF semua sudah beres. Target device diubah jadi minSdk 34 (Moto G45 saja). Rancangan detail Mode Baca + Translate + TTS sudah disepakati (lihat STATUS.md), masih tahap diskusi belum mulai coding.
 
 ## Tujuan Proyek
-App Android pengganti beberapa app reader/editor: baca & edit banyak jenis file (PDF, xlsx, gambar, JSON/HTML/JS/TXT/CSS), dengan tampilan konsisten di berbagai perangkat & versi Android (target minSdk 28). Device utama: Motorola Moto G45 (RAM kecil, jadi semua keputusan teknis prioritaskan ringan).
+App Android pengganti beberapa app reader/editor: baca dan edit banyak jenis file (PDF, xlsx, gambar, JSON/HTML/JS/TXT/CSS), dengan tampilan konsisten. Device utama dan minimum: Motorola Moto G45 (minSdk 34, RAM kecil, jadi semua keputusan teknis prioritaskan ringan).
 
 ## Tahap Selesai
-- **Tahap 0**: Keystore signing permanen (APK release, update tanpa uninstall) ✅
-- **Tahap 1**: Izin All Files Access, scan otomatis, Room DB, Beranda dasar (search/filter/list), bottom navbar (Beranda/Terakhir/Pengaturan) ✅
-- **Tahap 2**: PDF Reader - swipe ala buku, pinch-zoom, back button ke Beranda, indikator halaman (pojok kanan atas) ✅
-- **Tahap 3**: Image Viewer (pinch-zoom, pan, double-tap) ✅ | xlsx versi dasar (lihat/edit sel/simpan, formula ditampilkan sebagai teks belum dihitung) ✅ | pptx belum dikerjakan
-- **Redesain Beranda** (Material You -> revisi ala "One Read"): kartu kategori warna beda per jenis, ikon kiri, layout rapat, kartu Direktori (info penyimpanan), kartu Favorit ✅
-- **Sistem Favorit**: FavoritesStore.kt (SharedPreferences, terpisah dari DB file biar gak kereset scan ulang) + tombol bintang di semua viewer (PDF/Gambar/Excel/Teks-Kode) ✅
-- **Bug kartu "Gambar" 0 file**: FileScanner sudah deteksi gambar dengan benar ✅
-- **Dark theme toggle**: ThemeStore.kt (SharedPreferences) + toggle di Pengaturan + MaterialTheme colorScheme + kartu Beranda pakai warna tema ✅
-- **OCR untuk PDF hasil scan**: sudah berjalan ✅
+- Tahap 0: Keystore signing permanen (APK release, update tanpa uninstall)
+- Tahap 1: Izin All Files Access, scan otomatis, Room DB, Beranda dasar (search/filter/list), bottom navbar (Beranda/Terakhir/Pengaturan)
+- Tahap 2: PDF Reader - swipe ala buku, pinch-zoom, back button ke Beranda, indikator halaman
+- Tahap 3: Image Viewer (pinch-zoom, pan, double-tap), xlsx versi dasar (lihat/edit sel/simpan)
+- Redesain Beranda ala "One Read": kartu kategori warna beda per jenis, kartu Direktori, kartu Favorit
+- Sistem Favorit: FavoritesStore.kt (SharedPreferences terpisah dari DB file) plus tombol bintang di semua viewer
+- Bug Gambar 0 file di Beranda: diperbaiki
+- Dark theme toggle: sudah ada di Pengaturan
+- Bug zoom PDF (konten melebihi frame): diperbaiki
+- Bug pan PDF setelah zoom (tidak bisa digeser): diperbaiki, root cause closure basi baca state bitmap
+- OCR per-halaman dengan prefetch progresif: selesai dibuild, TAPI akan digantikan sepenuhnya oleh fitur Mode Baca (lihat bagian rencana di bawah)
+- Target device diubah jadi hanya Motorola Moto G45, minSdk dinaikkan ke 34, targetSdk 35
 
-## Belum Dikerjakan (dari dokumen "Rencana Pengembangan Ebook Reader")
-1. Fix bug zoom PDF - konten melebihi frame saat diperbesar
+## Rencana Fitur: Mode Baca, Translate, TTS
+Status: tahap DISKUSI, detail lengkap sudah disepakati dan dicatat di STATUS.md, belum mulai coding.
+
+Ringkasan: tap layar membuka modal pengaturan berisi saklar Mode Baca (tata ulang gambar dan teks PDF jadi tampilan rapi, sistem otomatis pilih teks asli atau OCR di belakang layar), kontrol Kontras, Warna Latar, Ukuran Teks, pilihan navigasi Scroll atau Swipe, saklar Translate (on-device ke Bahasa Indonesia), dan TTS (baca teks yang tampil, auto-scroll per paragraf, kontrol di Pengaturan).
+
+## Belum Dikerjakan (urutan prioritas)
+1. Mode Baca, Translate, TTS (detail di STATUS.md dan bagian di atas)
 2. Mode E-ink (background putih pucat/sepia, font serif, kontras tinggi, transisi halaman instan)
-3. Panel pengaturan baca (kecerahan in-app, mode halaman vertikal/horizontal/ganda, tema warna latar)
-4. Mode reflow teks (font besar + auto word-wrap, butuh PDF dibaca sebagai text layer)
-5. Pengaturan jarak baris & margin, pilihan jenis font
-6. Layar tetap nyala saat baca, kunci orientasi layar
-7. Animasi ganti halaman ala membuka lembaran kertas
-8. Translate teks + koreksi tata bahasa
-9. Text-to-speech
-10. Pencarian dalam dokumen (highlight + indikator hasil ala Dropbox)
-11. Highlight & catatan pribadi
-12. Lanjut baca cepat ke buku/file terakhir dibuka
-13. pptx (PowerPoint) viewer
-14. Formula aktif di xlsx (Tahap C, ditunda karena jarang dipakai)
+3. Pengaturan jarak baris dan margin, pilihan jenis font
+4. Layar tetap nyala saat baca, kunci orientasi layar
+5. Animasi ganti halaman ala membuka lembaran kertas
+6. Pencarian dalam dokumen (highlight dan indikator hasil ala Dropbox)
+7. Highlight dan catatan pribadi
+8. Lanjut baca cepat ke buku/file terakhir dibuka
+9. pptx (PowerPoint) viewer
+10. Formula aktif di xlsx (ditunda karena jarang dipakai)
 
 ## Referensi Desain
-- App "One Read": text selection/highlight/copy, konversi file, kategori file, menu file lengkap (cetak, ganti nama, kompresi, gabung/pisah PDF, dll)
-- Google PDF Viewer: jadi acuan perilaku zoom yang benar (konten terkurung rapi, beda dari bug yang kita punya sekarang)
+- App "One Read": text selection/highlight/copy, konversi file, kategori file, menu file lengkap
+- Google PDF Viewer: acuan perilaku zoom yang benar
+- Referensi custom milik user untuk tampilan Mode Baca (dark background, gambar dan teks ditata rapi) - dibuat sendiri, bukan dari aplikasi tertentu
