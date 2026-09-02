@@ -244,11 +244,13 @@ private fun SettingsPanel(
 private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+    var imageLoadDone by remember(pageIndex) { mutableStateOf(false) }
     var extractedText by remember(pageIndex) { mutableStateOf<String?>(null) }
     val readyKeys by OcrStore.readyKeys.collectAsState()
 
     LaunchedEffect(pageIndex) {
         bitmap = PdfTextExtractor.extractMainImage(context, uri, pageIndex)
+        imageLoadDone = true
         val text = PdfTextExtractor.extractPageText(context, uri, pageIndex)
         extractedText = text
         if (text.isNullOrBlank()) {
@@ -275,7 +277,7 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
                 contentDescription = "Halaman ${pageIndex + 1}",
                 modifier = Modifier.fillMaxWidth()
             )
-        } else {
+        } else if (!imageLoadDone) {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
