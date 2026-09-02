@@ -38,6 +38,12 @@ import com.yohanes.filereader.data.PdfTextExtractor
 import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import com.yohanes.filereader.data.ReaderSettingsStore
+import com.yohanes.filereader.data.ReaderSettings
+import com.yohanes.filereader.data.BacaWarnaLatar
 import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
@@ -74,8 +80,12 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 
     var modeBacaActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
-    var ujiTeksResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        ReaderSettingsStore.ensureLoaded(context)
+    }
+    val readerSettings by ReaderSettingsStore.settings.collectAsState()
 
     LaunchedEffect(pagerState.currentPage) {
         settingsModalOpen = false
@@ -99,14 +109,6 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
                 )
             }
-            TextButton(onClick = {
-                scope.launch {
-                    val text = PdfTextExtractor.extractPageText(context, uri, pagerState.currentPage)
-                    ujiTeksResult = text?.ifBlank { "(kosong - kemungkinan halaman hasil scan)" } ?: "(gagal ekstrak teks)"
-                }
-            }) {
-                Text("Uji Teks")
-            }
         }
 
         if (pageCount == 0) {
@@ -125,6 +127,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             displayName = displayName,
                             pageCount = pageCount,
                             pageIndex = pageIndex,
+                            settings = readerSettings,
                             onTap = { settingsModalOpen = true }
                         )
                     } else {
@@ -175,38 +178,15 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     ) {
                         SettingsPanel(
                             modeBacaActive = modeBacaActive,
-                            onModeBacaChange = { modeBacaActive = it }
+                            onModeBacaChange = { modeBacaActive = it },
+                            settings = readerSettings,
+                            onTextSizeChange = { ReaderSettingsStore.setTextSize(context, it) },
+                            onContrastChange = { ReaderSettingsStore.setContrast(context, it) },
+                            onWarnaLatarChange = { ReaderSettingsStore.setWarnaLatar(context, it) }
                         )
                     }
                 }
 
-                val ujiTeksText = ujiTeksResult
-                if (ujiTeksText != null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(androidx.compose.ui.graphics.Color(0xFF121212))
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(8.dp),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            TextButton(onClick = { ujiTeksResult = null }) {
-                                Text("Tutup", color = androidx.compose.ui.graphics.Color.White)
-                            }
-                        }
-                        Text(
-                            ujiTeksText,
-                            color = androidx.compose.ui.graphics.Color.White,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp)
-                        )
-                    }
-                }
             }
         }
     }
@@ -215,9 +195,18 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 @Composable
 private fun SettingsPanel(
     modeBacaActive: Boolean,
-    onModeBacaChange: (Boolean) -> Unit
+    onModeBacaChange: (Boolean) -> Unit,
+    settings: ReaderSettings,
+    onTextSizeChange: (Float) -> Unit,
+    onContrastChange: (Float) -> Unit,
+    onWarnaLatarChange: (BacaWarnaLatar) -> Unit
 ) {
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -235,13 +224,66 @@ private fun SettingsPanel(
         Text(
             "Menata ulang gambar dan teks halaman ini agar lebih nyaman dibaca.",
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
+
+        Text("Ukuran Teks", style = MaterialTheme.typography.titleSmall)
+        Row(
+            Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
+                Text("-", style = MaterialTheme.typography.titleLarge)
+            }
+            Text(
+                "${settings.textSizeSp.toInt()} sp",
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            IconButton(onClick = { onTextSizeChange(settings.textSizeSp + 2f) }) {
+                Text("+", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+
+        Text("Kontras Gambar", style = MaterialTheme.typography.titleSmall)
+        Slider(
+            value = settings.contrast,
+            onValueChange = onContrastChange,
+            valueRange = 0.5f..2f,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+        )
+
+        Text("Warna Latar", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BacaWarnaLatar.values().forEach { warna ->
+                val selected = settings.warnaLatar == warna
+                OutlinedButton(
+                    onClick = { onWarnaLatarChange(warna) },
+                    colors = if (selected) {
+                        ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    } else {
+                        ButtonDefaults.outlinedButtonColors()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(warna.label, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex: Int, onTap: () -> Unit) {
+private fun ReflowPage(
+    uri: Uri,
+    displayName: String,
+    pageCount: Int,
+    pageIndex: Int,
+    settings: ReaderSettings,
+    onTap: () -> Unit
+) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
     var imageLoadDone by remember(pageIndex) { mutableStateOf(false) }
@@ -261,10 +303,25 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
     val ocrKey = "$displayName|$pageIndex"
     val ocrReady = readyKeys.contains(ocrKey) || OcrStore.hasPageCache(context, displayName, pageIndex)
 
+    val bgColor = androidx.compose.ui.graphics.Color(settings.warnaLatar.bg)
+    val textColor = androidx.compose.ui.graphics.Color(settings.warnaLatar.teks)
+    val contrastMatrix = remember(settings.contrast) {
+        val c = settings.contrast
+        val translate = (1f - c) / 2f * 255f
+        ColorMatrix(
+            floatArrayOf(
+                c, 0f, 0f, 0f, translate,
+                0f, c, 0f, 0f, translate,
+                0f, 0f, c, 0f, translate,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(androidx.compose.ui.graphics.Color(0xFF121212))
+            .background(bgColor)
             .verticalScroll(rememberScrollState())
             .pointerInput(pageIndex) {
                 detectTapGestures(onTap = { onTap() })
@@ -275,6 +332,7 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
             Image(
                 bitmap = bmp.asImageBitmap(),
                 contentDescription = "Halaman ${pageIndex + 1}",
+                colorFilter = ColorFilter.colorMatrix(contrastMatrix),
                 modifier = Modifier.fillMaxWidth()
             )
         } else if (!imageLoadDone) {
@@ -292,7 +350,8 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "Memuat teks halaman...",
-                            color = androidx.compose.ui.graphics.Color.White,
+                            color = textColor,
+                            fontSize = settings.textSizeSp.sp,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -301,7 +360,8 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
             text.isNotBlank() -> {
                 Text(
                     text,
-                    color = androidx.compose.ui.graphics.Color.White,
+                    color = textColor,
+                    fontSize = settings.textSizeSp.sp,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
@@ -310,7 +370,8 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
                 val ocrText = OcrStore.readPageCache(context, displayName, pageIndex)
                 Text(
                     ocrText.ifBlank { "(Teks halaman ini belum tersedia)" },
-                    color = androidx.compose.ui.graphics.Color.White,
+                    color = textColor,
+                    fontSize = settings.textSizeSp.sp,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                 )
@@ -322,7 +383,8 @@ private fun ReflowPage(uri: Uri, displayName: String, pageCount: Int, pageIndex:
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "Memproses OCR halaman ini...",
-                            color = androidx.compose.ui.graphics.Color.White,
+                            color = textColor,
+                            fontSize = settings.textSizeSp.sp,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
