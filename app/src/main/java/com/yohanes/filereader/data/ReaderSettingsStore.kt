@@ -20,7 +20,10 @@ data class ReaderSettings(
     val textSizeSp: Float = 16f,
     val contrast: Float = 1f,
     val warnaLatar: BacaWarnaLatar = BacaWarnaLatar.GELAP,
-    val navMode: NavigasiMode = NavigasiMode.SWIPE
+    val navMode: NavigasiMode = NavigasiMode.SWIPE,
+    val ttsVolume: Float = 1f,
+    val ttsPitch: Float = 1f,
+    val ttsSpeed: Float = 1f
 )
 
 object ReaderSettingsStore {
@@ -29,6 +32,9 @@ object ReaderSettingsStore {
     private const val KEY_CONTRAST = "contrast"
     private const val KEY_WARNA_LATAR = "warna_latar"
     private const val KEY_NAV_MODE = "nav_mode"
+    private const val KEY_TTS_VOLUME = "tts_volume"
+    private const val KEY_TTS_PITCH = "tts_pitch"
+    private const val KEY_TTS_SPEED = "tts_speed"
 
     private val _settings = MutableStateFlow(ReaderSettings())
     val settings: StateFlow<ReaderSettings> = _settings
@@ -54,7 +60,10 @@ object ReaderSettingsStore {
             } catch (e: Exception) {
                 NavigasiMode.SWIPE
             }
-            _settings.value = ReaderSettings(textSize, contrast, warna, nav)
+            val ttsVolume = prefs.getFloat(KEY_TTS_VOLUME, 1f)
+            val ttsPitch = prefs.getFloat(KEY_TTS_PITCH, 1f)
+            val ttsSpeed = prefs.getFloat(KEY_TTS_SPEED, 1f)
+            _settings.value = ReaderSettings(textSize, contrast, warna, nav, ttsVolume, ttsPitch, ttsSpeed)
             loaded = true
         }
     }
@@ -81,6 +90,24 @@ object ReaderSettingsStore {
         persist(context)
     }
 
+    fun setTtsVolume(context: Context, value: Float) {
+        val clamped = value.coerceIn(0f, 1f)
+        _settings.value = _settings.value.copy(ttsVolume = clamped)
+        persist(context)
+    }
+
+    fun setTtsPitch(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.5f, 2f)
+        _settings.value = _settings.value.copy(ttsPitch = clamped)
+        persist(context)
+    }
+
+    fun setTtsSpeed(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.5f, 2f)
+        _settings.value = _settings.value.copy(ttsSpeed = clamped)
+        persist(context)
+    }
+
     private fun persist(context: Context) {
         val prefs = context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val s = _settings.value
@@ -89,6 +116,9 @@ object ReaderSettingsStore {
             .putFloat(KEY_CONTRAST, s.contrast)
             .putString(KEY_WARNA_LATAR, s.warnaLatar.name)
             .putString(KEY_NAV_MODE, s.navMode.name)
+            .putFloat(KEY_TTS_VOLUME, s.ttsVolume)
+            .putFloat(KEY_TTS_PITCH, s.ttsPitch)
+            .putFloat(KEY_TTS_SPEED, s.ttsSpeed)
             .apply()
     }
 }
