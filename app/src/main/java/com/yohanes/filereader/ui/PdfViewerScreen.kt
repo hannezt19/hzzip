@@ -148,6 +148,16 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                 pageCount = pageCount,
                                 pageIndex = pageIndex,
                                 settings = readerSettings,
+                                onPrevPage = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage((pagerState.currentPage - 1).coerceAtLeast(0))
+                                    }
+                                },
+                                onNextPage = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage((pagerState.currentPage + 1).coerceAtMost(pageCount - 1))
+                                    }
+                                },
                                 onTap = { settingsModalOpen = true }
                             )
                         } else {
@@ -172,6 +182,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                         pageCount = pageCount,
                                         pageIndex = pageIndex,
                                         settings = readerSettings,
+                                        onPrevPage = {},
+                                        onNextPage = {},
                                         onTap = { settingsModalOpen = true }
                                     )
                                 } else {
@@ -190,7 +202,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     "$currentPageNumber / $pageCount",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier
-                        .align(androidx.compose.ui.Alignment.TopEnd)
+                        .align(androidx.compose.ui.Alignment.TopStart)
                         .padding(8.dp)
                         .background(
                             androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
@@ -338,6 +350,7 @@ private fun SettingsPanel(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ReflowPage(
     uri: Uri,
@@ -345,6 +358,8 @@ private fun ReflowPage(
     pageCount: Int,
     pageIndex: Int,
     settings: ReaderSettings,
+    onPrevPage: () -> Unit,
+    onNextPage: () -> Unit,
     onTap: () -> Unit
 ) {
     val context = LocalContext.current
@@ -382,6 +397,7 @@ private fun ReflowPage(
     }
 
     var fullscreenImage by remember(pageIndex) { mutableStateOf(false) }
+    var fullscreenImages by remember(pageIndex) { mutableStateOf<List<Bitmap>?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
@@ -477,17 +493,58 @@ private fun ReflowPage(
         }
     }
 
+    if (settings.navMode == NavigasiMode.SWIPE) {
+        if (pageIndex > 0) {
+            Text(
+                "\u2190",
+                color = textColor,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(12.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { onPrevPage() })
+                    }
+            )
+        }
+        if (pageIndex < pageCount - 1) {
+            Text(
+                "\u2192",
+                color = textColor,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(12.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { onNextPage() })
+                    }
+            )
+        }
+    }
+
     if (fullscreenImage && bitmap != null) {
+        LaunchedEffect(pageIndex, fullscreenImage) {
+            if (fullscreenImage && fullscreenImages == null) {
+                fullscreenImages = PdfTextExtractor.extractAllImages(context, uri, pageIndex)
+            }
+        }
+        val images = fullscreenImages?.takeIf { it.isNotEmpty() } ?: listOf(bitmap)
+        val fsPagerState = rememberPagerState(pageCount = { images.size })
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(androidx.compose.ui.graphics.Color.Black)
         ) {
-            ZoomableImageBox(
-                bitmap = bitmap,
-                contentDescription = "Halaman ${pageIndex + 1} diperbesar",
-                onTap = {}
-            )
+            HorizontalPager(
+                state = fsPagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { imgIndex ->
+                ZoomableImageBox(
+                    bitmap = images[imgIndex],
+                    contentDescription = "Halaman ${pageIndex + 1} gambar ${imgIndex + 1} diperbesar",
+                    onTap = {}
+                )
+            }
             Text(
                 "\u2715",
                 color = androidx.compose.ui.graphics.Color.White,

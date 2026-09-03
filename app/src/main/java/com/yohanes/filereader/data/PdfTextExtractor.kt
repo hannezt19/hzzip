@@ -71,4 +71,31 @@ object PdfTextExtractor {
             document?.close()
         }
     }
+
+    fun extractAllImages(context: Context, uri: Uri, pageIndex: Int): List<Bitmap> {
+        ensureInit(context)
+        var document: PDDocument? = null
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return emptyList()
+            document = inputStream.use { stream -> PDDocument.load(stream) }
+            val doc = document ?: return emptyList()
+            if (pageIndex < 0 || pageIndex >= doc.numberOfPages) return emptyList()
+            val page = doc.getPage(pageIndex)
+            val resources = page.resources ?: return emptyList()
+            val images = mutableListOf<Pair<Long, Bitmap>>()
+            for (name in resources.xObjectNames) {
+                val xObject = resources.getXObject(name)
+                if (xObject is PDImageXObject) {
+                    val bmp = xObject.image
+                    val area = bmp.width.toLong() * bmp.height.toLong()
+                    images.add(area to bmp)
+                }
+            }
+            images.sortedByDescending { it.first }.map { it.second }
+        } catch (e: Exception) {
+            emptyList()
+        } finally {
+            document?.close()
+        }
+    }
 }
