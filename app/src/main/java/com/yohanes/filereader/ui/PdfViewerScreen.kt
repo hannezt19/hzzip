@@ -187,7 +187,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(pageCount) { pageIndex ->
-                            Box(modifier = Modifier.fillMaxWidth().fillParentMaxHeight()) {
+                            Box(modifier = Modifier.fillMaxWidth().fillParentMaxHeight().clipToBounds()) {
                                 if (modeBacaActive) {
                                     ReflowPage(
                                         uri = uri,
