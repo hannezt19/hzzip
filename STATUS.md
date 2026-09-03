@@ -1,62 +1,27 @@
 # STATUS - FileReaderApp
 
-> Update terakhir: Mode Baca (reflow) SELESAI total - semua kontrol (Kontras, Warna Latar, Ukuran Teks, Navigasi Scroll/Swipe, expand gambar) jalan, Panel Pengaturan sudah dirombak sesuai desain user (tanpa teks judul). Build sukses & terinstal. Berikutnya: Translate & TTS.
+> Update terakhir: bug kartu "Gambar" 0 file, dark theme toggle, dan fondasi OCR PDF sudah selesai & terinstal berjalan normal di HP. Sesi akun ke-2 sedang memperbaiki bug perpindahan halaman (page-turn) yang kurang smooth, sambil mencatat rencana 3 fitur baru (lihat ROADMAP.md).
 > File ini isinya keputusan desain penting + catatan teknis biar sesi berikutnya (akun mana pun) gak mengulang diskusi/kesalahan yang sama.
 > Kalau file ini diupdate: tambahkan keputusan/catatan baru di bagian yang sesuai, jangan hapus yang lama kecuali sudah tidak relevan.
 
 ## Keputusan Desain Penting
-- **Arsitektur**: Jetpack Compose (native Kotlin), bukan Capacitor/hybrid - demi performa di device RAM kecil (target: HANYA Motorola Moto G45)
-- **SDK**: minSdk 34, targetSdk/compileSdk 35
-- **xlsx**: parser & writer dibikin sendiri (baca/tulis ZIP+XML manual), BUKAN pakai Apache POI
-- **Favorit**: status favorit disimpan TERPISAH dari database file utama (SharedPreferences via FavoritesStore.kt)
-- **Kategori Beranda**: PDF, Gambar, Excel, Teks/Kode, Direktori, Favorit
-- **Ekstraksi teks PDF**: pakai PdfBox-Android 2.0.27.0 (BUKAN Pdfium-Android)
-- **PENTING - sortByPosition PDFTextStripper**: JANGAN diaktifkan - terbukti mengacak urutan baris di PDF 2 kolom. Default order sudah benar.
-- **Edge-to-edge Android 15**: pakai `statusBarsPadding()` di Column utama layar viewer
-
-## Klarifikasi Penting: "OCR" vs "Mode Baca"
-Fitur OCR pertama (tombol manual → bottom sheet teks terpisah) BUKAN yang dimaksud user sejak awal. Yang diminta: tampilan **reflow** (gambar+teks PDF ditata ulang jadi satu alur baca rapi, dark background). Sistem sekarang otomatis pakai teks asli PDF kalau ada, fallback ke OCR kalau halaman hasil scan - user tidak perlu tahu istilah "OCR", cukup saklar "Mode Baca".
-
-## Mode Baca (reflow) - Status Implementasi (SELESAI)
-- **ReflowPage**: render gambar utama halaman (`PdfTextExtractor.extractMainImage`) + teks (`extractPageText`, fallback `OcrStore` untuk PDF hasil scan) - gambar & teks terpisah (bukan satu bitmap gabungan)
-- **ReaderSettingsStore.kt**: penyimpanan permanen (SharedPreferences) untuk textSizeSp, contrast, warnaLatar (enum BacaWarnaLatar: GELAP/SEPIA/TERANG/ABU), navMode (enum NavigasiMode: SWIPE/SCROLL)
-- **Kontras Gambar**: diterapkan ke gambar via `ColorFilter.colorMatrix` (ColorMatrix custom berdasarkan nilai contrast)
-- **Warna Latar**: 4 pilihan, mengubah warna background & warna teks sekaligus (pasangan bg+teks per enum)
-- **Navigasi Scroll/Swipe**: pengaturan GLOBAL (bukan cuma Mode Baca) - `HorizontalPager` untuk Swipe, `LazyColumn` untuk Scroll; indikator halaman ikut menyesuaikan (currentPage vs firstVisibleItemIndex)
-- **Tombol expand gambar**: ikon kecil (⤢, U+2922) di pojok kanan atas gambar dalam ReflowPage → buka overlay fullscreen pakai `ZoomableImageBox` (pinch-zoom/pan yang sama dengan PDF normal) → tombol ✕ (U+2715) untuk tutup
-- **Refactor**: `ZoomablePdfPage` dipecah jadi `ZoomableImageBox` (composable reusable, terima Bitmap langsung) - dipakai baik untuk PDF normal maupun overlay fullscreen di Mode Baca
-
-## Panel Pengaturan (SettingsPanel) - Desain Final (SELESAI, sesuai sketsa user)
-- **Tanpa teks judul sama sekali** - semua label dihapus (Mode Baca, Ukuran Teks, Kontras Gambar, Warna Latar, Navigasi Halaman tidak ada tulisannya lagi)
-- **Baris 1**: kontrol Ukuran Teks (-/+/angka sp) sejajar kiri + saklar Mode Baca di kanan, satu Row yang sama
-- **Baris 2**: Slider Kontras Gambar selebar layar
-- **Baris 3 - Navigasi Halaman**: 2 kotak (56dp, rounded 12dp) berisi simbol panah teks - "↔" (U+2194) untuk Swipe, "↕" (U+2195) untuk Scroll. Kotak aktif dapat background `primaryContainer`, tidak aktif `surfaceVariant`
-- **Baris 4 - Warna Latar**: 4 kotak kecil (44dp, rounded 8dp) berisi swatch warna asli (`Color(warna.bg)`). Border 1dp abu-abu transparan kalau tidak terpilih, border 3dp warna `primary` (jadi cincin) kalau terpilih
-- **Alasan pakai simbol teks/unicode, bukan Material Icon**: proyek ini HANYA boleh pakai `material-icons-core` (bukan `material-icons-extended`, itu bikin gagal build - lihat Catatan Teknis). Simbol panah unicode aman & konsisten dengan gaya app (tombol -/+ dan ✕ juga sudah pakai teks, bukan Icon)
-
-## Rencana Translate (belum dikoding)
-- Saklar tambahan di Panel Pengaturan, aktif kalau Mode Baca nyala
-- ML Kit Translate on-device (offline, bukan API online)
-- Bahasa tujuan tetap Bahasa Indonesia (bukan pilihan bebas)
-- Teks asli DIGANTI langsung jadi teks terjemahan (bukan ditampilkan berdampingan)
-
-## Rencana TTS (belum dikoding)
-- Pakai TextToSpeech bawaan Android (offline, gratis)
-- Baca teks yang sedang ditampilkan: versi terjemahan kalau Translate nyala, teks asli kalau mati
-- Kontrol Play/Jeda + kecepatan bicara di bagian Pengaturan (bukan di panel utama)
-- Auto-lanjut halaman terikat mode navigasi: Scroll = baca lanjut terus tanpa putus; Swipe = TTS cuma baca halaman yang dibuka, tapi kalau user geser manual saat TTS aktif, otomatis lanjut baca halaman baru itu
-- TIDAK perlu highlight kata/kalimat saat dibacakan
-- Auto-scroll dilacak per PARAGRAF, posisi paragraf aktif diletakkan di bagian atas layar yang kelihatan
+- **Arsitektur**: Jetpack Compose (native Kotlin) + minSdk 28, bukan Capacitor/hybrid - demi performa di device RAM kecil (target: Motorola Moto G45)
+- **xlsx**: parser & writer dibikin sendiri (baca/tulis ZIP+XML manual), BUKAN pakai Apache POI - karena POI terlalu berat untuk device RAM kecil, dan berisiko masalah build di Android (javax.xml.stream, method count)
+- **Favorit**: status favorit disimpan TERPISAH dari database file utama (pakai SharedPreferences via FavoritesStore.kt), karena database file (Room) selalu di-scan-ulang & ditulis-ulang tiap Beranda dibuka - kalau favorit disimpan di tabel yang sama, akan ke-reset terus
+- **Kategori Beranda**: PDF, Gambar, Excel, Teks/Kode (gabungan JSON/HTML/JS/TXT/CSS/dll), Direktori (info penyimpanan, bukan file), Favorit (file yang ditandai user) - keputusan gabung "Teks/Kode" jadi satu kategori (bukan dipecah per ekstensi) karena jumlahnya tidak beraturan dan fungsinya mirip
+- **Penandaan favorit**: dilakukan dari DALAM viewer (tombol bintang), bukan dari list Beranda
+- **OCR PDF**: pakai ML Kit Text Recognition v2 (on-device), diproses sekali di background (bukan realtime per halaman), hasil disimpan; deteksi otomatis apakah PDF butuh OCR (cek text layer dulu); hasil OCR ditampilkan di mode terpisah ("Lihat sebagai teks") di PdfViewerScreen
+- **Modal pengaturan (rencana)**: untuk mode gambar fullscreen, modal pengaturan ukuran teks dipanggil dengan 1x tap di layar (bukan tombol/menu terpisah)
 
 ## Catatan Teknis / Jebakan yang Sudah Ditemukan
-- **Ikon Compose Material**: HANYA pakai ikon dari `material-icons-core`. JANGAN pakai `Icons.Default.Save`, `Icons.Outlined.StarBorder`, dll - butuh dependency `material-icons-extended` yang tidak ada di project & bikin gagal build. Solusi yang dipakai: simbol unicode/teks biasa (-, +, ✕, ⤢, ↔, ↕) sebagai pengganti ikon
-- **TopAppBar / Scaffold**: API experimental di Material3, wajib `@OptIn(ExperimentalMaterial3Api::class)`
-- **Parameter wajib baru**: kalau menambah parameter wajib (non-default) ke Composable, WAJIB cek & update semua tempat yang memanggilnya
-- **Proses patch kode**: semua edit lewat script `python3` heredoc (cari string persis `old`, ganti `new`), WAJIB cek jumlah "X/Y patch berhasil" sebelum commit. Kalau ada yang gagal, minta lihat isi file asli persis (sed -n) dulu sebelum retry - JANGAN menebak indentasi
-- **WAJIB commit SEMUA file yang diubah**: pernah kejadian build gagal ("Unresolved reference") karena satu file (ReaderSettingsStore.kt) ketinggalan tidak ter-commit sementara file lain yang bergantung padanya (PdfViewerScreen.kt) sudah ter-push duluan. Selalu cek `git status` sebelum commit untuk pastikan tidak ada file "Changes not staged" yang tersisa
-- **Environment kerja**: tidak ada Android Studio/laptop, semua dari HP via Termux. Build APK selalu lewat GitHub Actions. GitHub CLI (`gh`) sudah terpasang & login (akun hannezt19) - dipakai untuk cek log build (`gh run list`, `gh run view <id> --log-failed`) tanpa perlu scroll manual di browser HP
-- **git pager**: sudah di-set `git config --global core.pager cat` supaya `git log`/`git status` tidak error "unable to execute pager"
-- **File besar**: kalau bikin file baru panjang (100+ baris) lewat heredoc, selalu cek `wc -l` dan `tail -5` untuk pastikan file tidak terpotong
+- **Ikon Compose Material**: HANYA pakai ikon yang ada di paket dasar (`material-icons-core`). JANGAN pakai `Icons.Default.Save`, `Icons.Outlined.StarBorder`, atau ikon lain yang tidak familiar - ini butuh dependency tambahan `material-icons-extended` yang belum ada di project & bikin gagal build. Kalau butuh ikon "belum favorit", pakai `Icons.Filled.Star` yang sama tapi beda warna/tint, bukan icon berbeda.
+- **TopAppBar / Scaffold**: API ini experimental di Material3, wajib tambahkan `@OptIn(ExperimentalMaterial3Api::class)` di atas fungsi Composable yang memakainya, atau build gagal dengan error "experimental API".
+- **Parameter wajib baru**: kalau menambah parameter wajib (non-default) ke sebuah Composable (misalnya `onExit: () -> Unit`), WAJIB cek & update semua tempat yang memanggil Composable itu juga (biasanya di MainActivity.kt) - kalau lupa, build gagal dengan error "No value passed for parameter".
+- **Proses patch kode**: semua edit kode dilakukan lewat script `python3` (bukan `sed`/manual edit) dengan pola cari `old` string persis, ganti ke `new`, lalu print jumlah berhasil (misal "2/2") - ini WAJIB dicek dulu sebelum commit, karena kalau hasilnya "0/1" berarti teks yang dicari tidak ketemu persis (biasanya beda whitespace/indentasi), dan file BELUM berubah.
+- **Environment kerja**: tidak ada Android Studio/laptop, semua dikerjakan dari HP via Termux. Build APK selalu lewat GitHub Actions (push ke GitHub -> otomatis build -> unduh APK dari halaman Actions -> instal manual di HP). Setiap selesai patch, WAJIB commit+push lalu cek hasil build di GitHub Actions sebelum lanjut ke langkah berikutnya.
+- **File besar**: kalau bikin file baru yang panjang (100+ baris) lewat heredoc (`cat > file << 'EOF'`), selalu cek `wc -l` setelahnya dan `tail -5` untuk pastikan file tidak terpotong sebelum lanjut.
+- **Koordinasi lintas-akun**: proyek ini pernah dikerjakan bergantian di beberapa akun Claude berbeda (saat token satu akun habis) - makanya WAJIB update ROADMAP.md/TODO.md/STATUS.md tiap ada progress, biar sesi/akun berikutnya gak mengulang diskusi atau ketinggalan info.
 
-## Bug Diketahui
-- (tidak ada bug terbuka saat ini - semua yang dilaporkan sudah diperbaiki)
+## Bug Diketahui (belum diperbaiki)
+- Perpindahan halaman (page-turn) kurang smooth - sedang diperbaiki
+- Zoom PDF: konten bisa melebihi batas frame saat diperbesar (beda dari Google PDF Viewer yang tetap terkurung rapi)
