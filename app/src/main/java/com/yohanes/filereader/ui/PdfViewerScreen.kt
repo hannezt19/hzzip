@@ -56,6 +56,15 @@ import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
 
+// Pecah teks jadi per-kalimat & beri jeda antar kalimat, biar lebih mudah dibaca
+private fun formatReadableText(text: String): String {
+    return text
+        .split(Regex("(?<=[.!?])\\s+"))
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .joinToString("\n\n")
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun PdfViewerScreen(uri: Uri, displayName: String) {
@@ -529,9 +538,10 @@ private fun ReflowPage(
                             }
                             translatedText != null -> {
                                 Text(
-                                    translatedText ?: "",
+                                    formatReadableText(translatedText ?: ""),
                                     color = textColor,
                                     fontSize = settings.textSizeSp.sp,
+                                    lineHeight = (settings.textSizeSp * 1.6f).sp,
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                                 )
