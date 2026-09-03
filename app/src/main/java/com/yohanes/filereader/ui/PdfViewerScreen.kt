@@ -98,6 +98,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var modeBacaActive by remember { mutableStateOf(false) }
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
+    var fullscreenImages by remember { mutableStateOf<List<Bitmap>?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -161,6 +162,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                 pageIndex = pageIndex,
                                 settings = readerSettings,
                                 translateActive = translateActive,
+                                fillScreen = true,
+                                onExpandImage = { imgs -> fullscreenImages = imgs },
                                 onPrevPage = {
                                     scope.launch {
                                         pagerState.animateScrollToPage((pagerState.currentPage - 1).coerceAtLeast(0))
@@ -187,20 +190,22 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(pageCount) { pageIndex ->
-                            Box(modifier = Modifier.fillMaxWidth().fillParentMaxHeight().clipToBounds()) {
-                                if (modeBacaActive) {
-                                    ReflowPage(
-                                        uri = uri,
-                                        displayName = displayName,
-                                        pageCount = pageCount,
-                                        pageIndex = pageIndex,
-                                        settings = readerSettings,
-                                        translateActive = translateActive,
-                                        onPrevPage = {},
-                                        onNextPage = {},
-                                        onTap = { settingsModalOpen = true }
-                                    )
-                                } else {
+                            if (modeBacaActive) {
+                                ReflowPage(
+                                    uri = uri,
+                                    displayName = displayName,
+                                    pageCount = pageCount,
+                                    pageIndex = pageIndex,
+                                    settings = readerSettings,
+                                    translateActive = translateActive,
+                                    fillScreen = false,
+                                    onExpandImage = { imgs -> fullscreenImages = imgs },
+                                    onPrevPage = {},
+                                    onNextPage = {},
+                                    onTap = { settingsModalOpen = true }
+                                )
+                            } else {
+                                Box(modifier = Modifier.fillMaxWidth().fillParentMaxHeight().clipToBounds()) {
                                     ZoomablePdfPage(
                                         uri = uri,
                                         pageIndex = pageIndex,
@@ -260,6 +265,39 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             onContrastChange = { ReaderSettingsStore.setContrast(context, it) },
                             onWarnaLatarChange = { ReaderSettingsStore.setWarnaLatar(context, it) },
                             onNavModeChange = { ReaderSettingsStore.setNavMode(context, it) }
+                        )
+                    }
+                }
+
+                if (fullscreenImages != null) {
+                    val images = fullscreenImages!!
+                    val fsPagerState = rememberPagerState(pageCount = { images.size })
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.ui.graphics.Color.Black)
+                    ) {
+                        HorizontalPager(
+                            state = fsPagerState,
+                            modifier = Modifier.fillMaxSize()
+                        ) { imgIndex ->
+                            ZoomableImageBox(
+                                bitmap = images[imgIndex],
+                                contentDescription = "Gambar ${imgIndex + 1} diperbesar",
+                                onTap = {}
+                            )
+                        }
+                        Text(
+                            "\u2715",
+                            color = androidx.compose.ui.graphics.Color.White,
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .statusBarsPadding()
+                                .padding(16.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(onTap = { fullscreenImages = null })
+                                }
                         )
                     }
                 }
@@ -394,11 +432,14 @@ private fun ReflowPage(
     pageIndex: Int,
     settings: ReaderSettings,
     translateActive: Boolean,
+    fillScreen: Boolean,
+    onExpandImage: (List<Bitmap>) -> Unit,
     onPrevPage: () -> Unit,
     onNextPage: () -> Unit,
     onTap: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
     var imageLoadDone by remember(pageIndex) { mutableStateOf(false) }
     var extractedText by remember(pageIndex) { mutableStateOf<String?>(null) }
@@ -458,134 +499,117 @@ private fun ReflowPage(
         )
     }
 
-    var fullscreenImage by remember(pageIndex) { mutableStateOf(false) }
-    var fullscreenImages by remember(pageIndex) { mutableStateOf<List<Bitmap>?>(null) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(bgColor)
-                .verticalScroll(rememberScrollState())
-                .pointerInput(pageIndex) {
-                    detectTapGestures(onTap = { onTap() })
-                }
-        ) {
-            val bmp = bitmap
-            if (bmp != null) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Image(
-                        bitmap = bmp.asImageBitmap(),
-                        contentDescription = "Halaman ${pageIndex + 1}",
-                        colorFilter = ColorFilter.colorMatrix(contrastMatrix),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        "\u2922",
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .background(
-                                androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
-                                androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .pointerInput(Unit) {
-                                detectTapGestures(onTap = { fullscreenImage = true })
-                            }
-                    )
-                }
-            } else if (!imageLoadDone) {
-                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+    @Composable
+    fun PageContent() {
+        val bmp = bitmap
+        if (bmp != null) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = "Halaman ${pageIndex + 1}",
+                    colorFilter = ColorFilter.colorMatrix(contrastMatrix),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    "\u2922",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(
+                            androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = {
+                                scope.launch {
+                                    val images = PdfTextExtractor.extractAllImages(context, uri, pageIndex)
+                                        .takeIf { it.isNotEmpty() } ?: listOfNotNull(bitmap)
+                                    onExpandImage(images)
+                                }
+                            })
+                        }
+                )
             }
+        } else if (!imageLoadDone) {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
 
-            val text = extractedText
-            when {
-                text == null -> {
-                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Memuat teks halaman...",
-                                color = textColor,
-                                fontSize = settings.textSizeSp.sp,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-                text.isNotBlank() -> {
-                    if (translateActive) {
-                        when {
-                            downloadState is ModelDownloadState.Downloading -> {
-                                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            "Mengunduh model bahasa...",
-                                            color = textColor,
-                                            fontSize = settings.textSizeSp.sp,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
-                                }
-                            }
-                            translatedText != null -> {
-                                Text(
-                                    formatReadableText(translatedText ?: ""),
-                                    color = textColor,
-                                    fontSize = settings.textSizeSp.sp,
-                                    lineHeight = (settings.textSizeSp * 1.6f).sp,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp)
-                                )
-                            }
-                            downloadState is ModelDownloadState.Error -> {
-                                Text(
-                                    formatReadableText(text),
-                                    color = textColor,
-                                    fontSize = settings.textSizeSp.sp,
-                                    lineHeight = (settings.textSizeSp * 1.6f).sp,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp)
-                                )
-                            }
-                            else -> {
-                                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            "Menerjemahkan...",
-                                            color = textColor,
-                                            fontSize = settings.textSizeSp.sp,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else {
+        val text = extractedText
+        when {
+            text == null -> {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
                         Text(
-                            formatReadableText(text),
+                            "Memuat teks halaman...",
                             color = textColor,
                             fontSize = settings.textSizeSp.sp,
-                            lineHeight = (settings.textSizeSp * 1.6f).sp,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.fillMaxWidth().padding(16.dp)
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
-                ocrReady -> {
-                    val ocrText = OcrStore.readPageCache(context, displayName, pageIndex)
+            }
+            text.isNotBlank() -> {
+                if (translateActive) {
+                    when {
+                        downloadState is ModelDownloadState.Downloading -> {
+                            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        "Mengunduh model bahasa...",
+                                        color = textColor,
+                                        fontSize = settings.textSizeSp.sp,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                        translatedText != null -> {
+                            Text(
+                                formatReadableText(translatedText ?: ""),
+                                color = textColor,
+                                fontSize = settings.textSizeSp.sp,
+                                lineHeight = (settings.textSizeSp * 1.6f).sp,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                            )
+                        }
+                        downloadState is ModelDownloadState.Error -> {
+                            Text(
+                                formatReadableText(text),
+                                color = textColor,
+                                fontSize = settings.textSizeSp.sp,
+                                lineHeight = (settings.textSizeSp * 1.6f).sp,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                            )
+                        }
+                        else -> {
+                            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        "Menerjemahkan...",
+                                        color = textColor,
+                                        fontSize = settings.textSizeSp.sp,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
                     Text(
-                        formatReadableText(ocrText.ifBlank { "(Teks halaman ini belum tersedia)" }),
+                        formatReadableText(text),
                         color = textColor,
                         fontSize = settings.textSizeSp.sp,
                         lineHeight = (settings.textSizeSp * 1.6f).sp,
@@ -593,88 +617,88 @@ private fun ReflowPage(
                         modifier = Modifier.fillMaxWidth().padding(16.dp)
                     )
                 }
-                else -> {
-                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Memproses OCR halaman ini...",
-                                color = textColor,
-                                fontSize = settings.textSizeSp.sp,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+            }
+            ocrReady -> {
+                val ocrText = OcrStore.readPageCache(context, displayName, pageIndex)
+                Text(
+                    formatReadableText(ocrText.ifBlank { "(Teks halaman ini belum tersedia)" }),
+                    color = textColor,
+                    fontSize = settings.textSizeSp.sp,
+                    lineHeight = (settings.textSizeSp * 1.6f).sp,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+            }
+            else -> {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Memproses OCR halaman ini...",
+                            color = textColor,
+                            fontSize = settings.textSizeSp.sp,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
         }
+    }
 
-        if (settings.navMode == NavigasiMode.SWIPE) {
-            if (pageIndex > 0) {
-                Text(
-                    "\u2190",
-                    color = textColor,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(12.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { onPrevPage() })
-                        }
-                )
-            }
-            if (pageIndex < pageCount - 1) {
-                Text(
-                    "\u2192",
-                    color = textColor,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(12.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { onNextPage() })
-                        }
-                )
-            }
-        }
-
-        if (fullscreenImage && bitmap != null) {
-            LaunchedEffect(pageIndex, fullscreenImage) {
-                if (fullscreenImage && fullscreenImages == null) {
-                    fullscreenImages = PdfTextExtractor.extractAllImages(context, uri, pageIndex)
-                }
-            }
-            val images = fullscreenImages?.takeIf { it.isNotEmpty() } ?: listOf(bitmap)
-            val fsPagerState = rememberPagerState(pageCount = { images.size })
-            Box(
+    if (fillScreen) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(androidx.compose.ui.graphics.Color.Black)
+                    .background(bgColor)
+                    .verticalScroll(rememberScrollState())
+                    .pointerInput(pageIndex) {
+                        detectTapGestures(onTap = { onTap() })
+                    }
             ) {
-                HorizontalPager(
-                    state = fsPagerState,
-                    modifier = Modifier.fillMaxSize()
-                ) { imgIndex ->
-                    ZoomableImageBox(
-                        bitmap = images[imgIndex],
-                        contentDescription = "Halaman ${pageIndex + 1} gambar ${imgIndex + 1} diperbesar",
-                        onTap = {}
+                PageContent()
+            }
+
+            if (settings.navMode == NavigasiMode.SWIPE) {
+                if (pageIndex > 0) {
+                    Text(
+                        "\u2190",
+                        color = textColor,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(12.dp)
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { onPrevPage() })
+                            }
                     )
                 }
-                Text(
-                    "\u2715",
-                    color = androidx.compose.ui.graphics.Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .statusBarsPadding()
-                        .padding(16.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { fullscreenImage = false })
-                        }
-                )
+                if (pageIndex < pageCount - 1) {
+                    Text(
+                        "\u2192",
+                        color = textColor,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(12.dp)
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { onNextPage() })
+                            }
+                    )
+                }
             }
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bgColor)
+                .pointerInput(pageIndex) {
+                    detectTapGestures(onTap = { onTap() })
+                }
+        ) {
+            PageContent()
         }
     }
 }
