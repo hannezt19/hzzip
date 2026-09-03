@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.style.TextOverflow
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.PdfTextExtractor
 import com.yohanes.filereader.data.OcrStore
@@ -52,17 +53,21 @@ import com.yohanes.filereader.data.BacaWarnaLatar
 import com.yohanes.filereader.data.NavigasiMode
 import com.yohanes.filereader.data.TranslateHelper
 import com.yohanes.filereader.data.ModelDownloadState
+import com.yohanes.filereader.data.TtsHelper
 import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
 
-// Pecah teks jadi per-kalimat & beri jeda antar kalimat, biar lebih mudah dibaca
-private fun formatReadableText(text: String): String {
+// Pecah teks jadi per-kalimat, dipakai untuk tampilan reflow & TTS
+private fun splitSentences(text: String): List<String> {
     return text
         .split(Regex("(?<=[.!?])\\s+"))
         .map { it.trim() }
         .filter { it.isNotBlank() }
-        .joinToString("\n\n")
+}
+
+private fun formatReadableText(text: String): String {
+    return splitSentences(text).joinToString("\n\n")
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -100,6 +105,13 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var settingsModalOpen by remember { mutableStateOf(false) }
     var fullscreenImages by remember { mutableStateOf<List<Bitmap>?>(null) }
     val scope = rememberCoroutineScope()
+
+    var ttsActive by remember { mutableStateOf(false) }
+    var ttsPlaying by remember { mutableStateOf(false) }
+    var ttsPanelExpanded by remember { mutableStateOf(false) }
+    var ttsSentences by remember { mutableStateOf<List<String>>(emptyList()) }
+    var ttsSentenceIndex by remember { mutableStateOf(0) }
+    var ttsCurrentPageIndex by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         ReaderSettingsStore.ensureLoaded(context)
@@ -146,6 +158,73 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 pagerState.currentPage + 1
             } else {
                 scrollListState.firstVisibleItemIndex + 1
+            }
+
+            suspend fun loadTtsSentences(pageIndex: Int): List<String> {
+                val extracted = PdfTextExtractor.extractPageText(context, uri, pageIndex) ?: ""
+                if (extracted.isBlank()) return emptyList()
+                val sourceText = if (translateActive) {
+                    val cacheKey = "$displayName|$pageIndex"
+                    TranslateHelper.getCached(cacheKey) ?: run {
+                        val lang = TranslateHelper.detectLanguage(extracted)
+                        if (lang != null && lang != "id") {
+                            val translator = TranslateHelper.ensureModelDownloaded(lang) {}
+                            if (translator != null) {
+                                val result = TranslateHelper.translate(translator, extracted)
+                                TranslateHelper.cache(cacheKey, result)
+                                result
+                            } else extracted
+                        } else extracted
+                    }
+                } else extracted
+                return splitSentences(sourceText)
+            }
+
+            fun speakSentence(index: Int) {
+                val s = ttsSentences.getOrNull(index) ?: return
+                TtsHelper.speak(s, readerSettings.ttsVolume, readerSettings.ttsPitch, readerSettings.ttsSpeed)
+            }
+
+            fun playFromPage(pageIndex: Int, sentenceIndex: Int) {
+                scope.launch {
+                    if (ttsCurrentPageIndex != pageIndex || ttsSentences.isEmpty()) {
+                        ttsCurrentPageIndex = pageIndex
+                        ttsSentences = loadTtsSentences(pageIndex)
+                    }
+                    if (ttsSentences.isEmpty()) {
+                        ttsPlaying = false
+                        return@launch
+                    }
+                    ttsSentenceIndex = sentenceIndex.coerceIn(0, ttsSentences.size - 1)
+                    ttsPlaying = true
+                    speakSentence(ttsSentenceIndex)
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                TtsHelper.ensureInit(context) {
+                    scope.launch {
+                        if (!ttsPlaying) return@launch
+                        val nextIndex = ttsSentenceIndex + 1
+                        if (nextIndex < ttsSentences.size) {
+                            ttsSentenceIndex = nextIndex
+                            speakSentence(nextIndex)
+                        } else if (readerSettings.navMode == NavigasiMode.SCROLL && ttsCurrentPageIndex < pageCount - 1) {
+                            val nextPage = ttsCurrentPageIndex + 1
+                            ttsCurrentPageIndex = nextPage
+                            ttsSentences = loadTtsSentences(nextPage)
+                            ttsSentenceIndex = 0
+                            if (ttsSentences.isNotEmpty()) {
+                                speakSentence(0)
+                                scrollListState.animateScrollToItem(nextPage)
+                            } else {
+                                ttsPlaying = false
+                            }
+                        } else {
+                            ttsPlaying = false
+                        }
+                    }
+                }
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -260,6 +339,15 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             onModeBacaChange = { modeBacaActive = it },
                             translateActive = translateActive,
                             onTranslateChange = { translateActive = it },
+                            ttsActive = ttsActive,
+                            onTtsActiveChange = { active ->
+                                ttsActive = active
+                                if (!active) {
+                                    TtsHelper.stop()
+                                    ttsPlaying = false
+                                    ttsPanelExpanded = false
+                                }
+                            },
                             settings = readerSettings,
                             onTextSizeChange = { ReaderSettingsStore.setTextSize(context, it) },
                             onContrastChange = { ReaderSettingsStore.setContrast(context, it) },
@@ -302,6 +390,105 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     }
                 }
 
+                if (ttsActive) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp, start = 12.dp, end = 12.dp)
+                            .fillMaxWidth(),
+                        tonalElevation = 6.dp,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                ttsSentences.getOrNull(ttsSentenceIndex) ?: "Ketuk putar untuk mulai membaca",
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f).padding(end = 4.dp)
+                            )
+                            IconButton(onClick = {
+                                val newIndex = (ttsSentenceIndex - 1).coerceAtLeast(0)
+                                if (ttsPlaying) {
+                                    playFromPage(ttsCurrentPageIndex, newIndex)
+                                } else {
+                                    ttsSentenceIndex = newIndex
+                                }
+                            }) { Text("\u23EA") }
+                            IconButton(onClick = {
+                                if (ttsPlaying) {
+                                    TtsHelper.stop()
+                                    ttsPlaying = false
+                                } else {
+                                    val pageIdx = if (readerSettings.navMode == NavigasiMode.SWIPE) pagerState.currentPage else scrollListState.firstVisibleItemIndex
+                                    playFromPage(pageIdx, ttsSentenceIndex)
+                                }
+                            }) { Text(if (ttsPlaying) "\u23F8" else "\u25B6") }
+                            IconButton(onClick = {
+                                val maxIndex = (ttsSentences.size - 1).coerceAtLeast(0)
+                                val newIndex = (ttsSentenceIndex + 1).coerceAtMost(maxIndex)
+                                if (ttsPlaying) {
+                                    playFromPage(ttsCurrentPageIndex, newIndex)
+                                } else {
+                                    ttsSentenceIndex = newIndex
+                                }
+                            }) { Text("\u23E9") }
+                            IconButton(onClick = { ttsPanelExpanded = !ttsPanelExpanded }) { Text("\u2699") }
+                        }
+                    }
+
+                    if (ttsPanelExpanded) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .navigationBarsPadding(),
+                            tonalElevation = 6.dp,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                                Text("Volume", style = MaterialTheme.typography.labelMedium)
+                                Slider(
+                                    value = readerSettings.ttsVolume,
+                                    onValueChange = { ReaderSettingsStore.setTtsVolume(context, it) },
+                                    valueRange = 0f..1f
+                                )
+                                Text("Pitch (Nada)", style = MaterialTheme.typography.labelMedium)
+                                Slider(
+                                    value = readerSettings.ttsPitch,
+                                    onValueChange = { ReaderSettingsStore.setTtsPitch(context, it) },
+                                    valueRange = 0.5f..2f
+                                )
+                                Text("Speed (Kecepatan)", style = MaterialTheme.typography.labelMedium)
+                                Slider(
+                                    value = readerSettings.ttsSpeed,
+                                    onValueChange = { ReaderSettingsStore.setTtsSpeed(context, it) },
+                                    valueRange = 0.5f..2f
+                                )
+                                Row(
+                                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    IconButton(onClick = {
+                                        TtsHelper.stop()
+                                        ttsPlaying = false
+                                        ttsSentenceIndex = 0
+                                    }) { Text("\u23F9") }
+                                    IconButton(onClick = {
+                                        TtsHelper.stop()
+                                        ttsPlaying = false
+                                        ttsActive = false
+                                        ttsPanelExpanded = false
+                                    }) { Text("\u2715") }
+                                }
+                            }
+                        }
+                    }
+                }
+
             }
         }
     }
@@ -313,6 +500,8 @@ private fun SettingsPanel(
     onModeBacaChange: (Boolean) -> Unit,
     translateActive: Boolean,
     onTranslateChange: (Boolean) -> Unit,
+    ttsActive: Boolean,
+    onTtsActiveChange: (Boolean) -> Unit,
     settings: ReaderSettings,
     onTextSizeChange: (Float) -> Unit,
     onContrastChange: (Float) -> Unit,
@@ -417,6 +606,20 @@ private fun SettingsPanel(
                 Switch(
                     checked = translateActive,
                     onCheckedChange = onTranslateChange
+                )
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "\uD83D\uDD0A",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = ttsActive,
+                    onCheckedChange = onTtsActiveChange
                 )
             }
         }
