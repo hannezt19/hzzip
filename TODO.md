@@ -1,14 +1,14 @@
 # TODO - FileReaderApp
 
-> Update terakhir: fondasi ekstraksi teks PDF selesai & diuji (default order PDFTextStripper terbukti benar, sortByPosition JANGAN dipakai). Siap mulai coding UI Mode Baca sungguhan.
+> Update terakhir: Mode Baca (reflow) SELESAI total termasuk redesain Panel Pengaturan tanpa teks judul. Build sukses, sudah dites di HP. Siap mulai kerjakan Translate & TTS.
 > File ini isinya HANYA tugas yang paling dekat/mendesak (maksimal 5 poin). Rencana besar/jangka panjang ada di ROADMAP.md, bukan di sini.
 > Kalau file ini diupdate: hapus poin yang sudah selesai, tulis status terbaru di baris "Update terakhir" di atas.
 
 ## Sedang Dikerjakan / Berikutnya
-1. [ ] Bangun UI "Mode Baca" (reflow): tap layar buka modal, saklar "Mode Baca" on/off, tampilan gambar+teks ditata rapi (dark background)
-2. [ ] Hapus tombol sementara "Uji Teks" setelah UI Mode Baca sungguhan jalan
-3. [ ] Panel modal: kontrol Kontras, pilihan Warna Latar, kontrol Ukuran Teks (-/+, simpan permanen di Pengaturan), pilihan navigasi Scroll/Swipe
-4. [ ] Tombol expand/fullscreen per gambar di dalam Mode Baca (pakai ulang ZoomablePdfPage)
+1. [ ] Translate: integrasi ML Kit Translate on-device (offline) ke Bahasa Indonesia, ganti teks asli di ReflowPage saat saklar Translate nyala
+2. [ ] Saklar Translate ditambahkan di Panel Pengaturan (aktif hanya kalau Mode Baca nyala)
+3. [ ] Text-to-speech: integrasi TextToSpeech Android bawaan, kontrol Play/Jeda + kecepatan di halaman Pengaturan
+4. [ ] Auto-scroll TTS per paragraf, auto-lanjut halaman ikut mode Scroll/Swipe
 
 ## Menunggu Keputusan User
 - (kosongkan bagian ini kalau tidak ada yang perlu ditanyakan ke user)
