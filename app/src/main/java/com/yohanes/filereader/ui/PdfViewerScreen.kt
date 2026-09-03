@@ -548,9 +548,10 @@ private fun ReflowPage(
                             }
                             downloadState is ModelDownloadState.Error -> {
                                 Text(
-                                    text,
+                                    formatReadableText(text),
                                     color = textColor,
                                     fontSize = settings.textSizeSp.sp,
+                                    lineHeight = (settings.textSizeSp * 1.6f).sp,
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.fillMaxWidth().padding(16.dp)
                                 )
@@ -572,9 +573,10 @@ private fun ReflowPage(
                         }
                     } else {
                         Text(
-                            text,
+                            formatReadableText(text),
                             color = textColor,
                             fontSize = settings.textSizeSp.sp,
+                            lineHeight = (settings.textSizeSp * 1.6f).sp,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.fillMaxWidth().padding(16.dp)
                         )
@@ -583,9 +585,10 @@ private fun ReflowPage(
                 ocrReady -> {
                     val ocrText = OcrStore.readPageCache(context, displayName, pageIndex)
                     Text(
-                        ocrText.ifBlank { "(Teks halaman ini belum tersedia)" },
+                        formatReadableText(ocrText.ifBlank { "(Teks halaman ini belum tersedia)" }),
                         color = textColor,
                         fontSize = settings.textSizeSp.sp,
+                        lineHeight = (settings.textSizeSp * 1.6f).sp,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.fillMaxWidth().padding(16.dp)
                     )
