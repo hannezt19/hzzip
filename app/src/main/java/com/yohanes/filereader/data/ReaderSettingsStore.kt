@@ -11,10 +11,16 @@ enum class BacaWarnaLatar(val bg: Long, val teks: Long, val label: String) {
     ABU(0xFF2B2B2B, 0xFFE0E0E0, "Abu-abu")
 }
 
+enum class NavigasiMode(val label: String) {
+    SWIPE("Swipe"),
+    SCROLL("Scroll")
+}
+
 data class ReaderSettings(
     val textSizeSp: Float = 16f,
     val contrast: Float = 1f,
-    val warnaLatar: BacaWarnaLatar = BacaWarnaLatar.GELAP
+    val warnaLatar: BacaWarnaLatar = BacaWarnaLatar.GELAP,
+    val navMode: NavigasiMode = NavigasiMode.SWIPE
 )
 
 object ReaderSettingsStore {
@@ -22,6 +28,7 @@ object ReaderSettingsStore {
     private const val KEY_TEXT_SIZE = "text_size_sp"
     private const val KEY_CONTRAST = "contrast"
     private const val KEY_WARNA_LATAR = "warna_latar"
+    private const val KEY_NAV_MODE = "nav_mode"
 
     private val _settings = MutableStateFlow(ReaderSettings())
     val settings: StateFlow<ReaderSettings> = _settings
@@ -41,7 +48,13 @@ object ReaderSettingsStore {
             } catch (e: Exception) {
                 BacaWarnaLatar.GELAP
             }
-            _settings.value = ReaderSettings(textSize, contrast, warna)
+            val navName = prefs.getString(KEY_NAV_MODE, NavigasiMode.SWIPE.name)
+            val nav = try {
+                NavigasiMode.valueOf(navName ?: NavigasiMode.SWIPE.name)
+            } catch (e: Exception) {
+                NavigasiMode.SWIPE
+            }
+            _settings.value = ReaderSettings(textSize, contrast, warna, nav)
             loaded = true
         }
     }
@@ -63,6 +76,11 @@ object ReaderSettingsStore {
         persist(context)
     }
 
+    fun setNavMode(context: Context, mode: NavigasiMode) {
+        _settings.value = _settings.value.copy(navMode = mode)
+        persist(context)
+    }
+
     private fun persist(context: Context) {
         val prefs = context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val s = _settings.value
@@ -70,6 +88,7 @@ object ReaderSettingsStore {
             .putFloat(KEY_TEXT_SIZE, s.textSizeSp)
             .putFloat(KEY_CONTRAST, s.contrast)
             .putString(KEY_WARNA_LATAR, s.warnaLatar.name)
+            .putString(KEY_NAV_MODE, s.navMode.name)
             .apply()
     }
 }
