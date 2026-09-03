@@ -20,6 +20,13 @@ sealed class ModelDownloadState {
 object TranslateHelper {
 
     private val translatorCache = mutableMapOf<String, Translator>()
+    private val translationCache = mutableMapOf<String, String>()
+
+    fun getCached(key: String): String? = translationCache[key]
+
+    fun cache(key: String, text: String) {
+        translationCache[key] = text
+    }
 
     // Deteksi bahasa sumber dari cuplikan teks
     suspend fun detectLanguage(text: String): String? = suspendCancellableCoroutine { cont ->
@@ -56,7 +63,7 @@ object TranslateHelper {
         }
 
         onStateChange(ModelDownloadState.Downloading)
-        val conditions = DownloadConditions.Builder().build() // izinkan unduh lewat wifi/data
+        val conditions = DownloadConditions.Builder().build()
 
         return suspendCancellableCoroutine { cont ->
             translator.downloadModelIfNeeded(conditions)
