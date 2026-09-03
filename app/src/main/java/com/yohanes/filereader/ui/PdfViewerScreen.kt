@@ -39,6 +39,9 @@ import com.yohanes.filereader.data.PdfTextExtractor
 import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -258,90 +261,78 @@ private fun SettingsPanel(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Mode Baca",
-                style = MaterialTheme.typography.titleSmall,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
-            )
+            ) {
+                IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
+                    Text("-", style = MaterialTheme.typography.titleLarge)
+                }
+                Text(
+                    "${settings.textSizeSp.toInt()} sp",
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+                IconButton(onClick = { onTextSizeChange(settings.textSizeSp + 2f) }) {
+                    Text("+", style = MaterialTheme.typography.titleLarge)
+                }
+            }
             Switch(
                 checked = modeBacaActive,
                 onCheckedChange = onModeBacaChange
             )
         }
 
-        Row(
-            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Ukuran Teks", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
-            IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
-                Text("-", style = MaterialTheme.typography.titleLarge)
-            }
-            Text(
-                "${settings.textSizeSp.toInt()} sp",
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-            IconButton(onClick = { onTextSizeChange(settings.textSizeSp + 2f) }) {
-                Text("+", style = MaterialTheme.typography.titleLarge)
-            }
-        }
-
-        Text(
-            "Menata ulang gambar dan teks halaman ini agar lebih nyaman dibaca.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        Text("Kontras Gambar", style = MaterialTheme.typography.titleSmall)
         Slider(
             value = settings.contrast,
             onValueChange = onContrastChange,
             valueRange = 0.5f..2f,
-            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 20.dp)
         )
 
-        Text("Warna Latar", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BacaWarnaLatar.values().forEach { warna ->
-                val selected = settings.warnaLatar == warna
-                OutlinedButton(
-                    onClick = { onWarnaLatarChange(warna) },
-                    colors = if (selected) {
-                        ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            NavigasiMode.values().forEach { mode ->
+                val selected = settings.navMode == mode
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
                         )
-                    } else {
-                        ButtonDefaults.outlinedButtonColors()
-                    },
-                    modifier = Modifier.weight(1f)
+                        .clickable { onNavModeChange(mode) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(warna.label, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        if (mode == NavigasiMode.SWIPE) "\u2194" else "\u2195",
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
             }
         }
 
-        Text(
-            "Navigasi Halaman",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NavigasiMode.values().forEach { mode ->
-                val selected = settings.navMode == mode
-                OutlinedButton(
-                    onClick = { onNavModeChange(mode) },
-                    colors = if (selected) {
-                        ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            BacaWarnaLatar.values().forEach { warna ->
+                val selected = settings.warnaLatar == warna
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                        .background(androidx.compose.ui.graphics.Color(warna.bg))
+                        .border(
+                            width = if (selected) 3.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                         )
-                    } else {
-                        ButtonDefaults.outlinedButtonColors()
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(mode.label, style = MaterialTheme.typography.labelSmall)
-                }
+                        .clickable { onWarnaLatarChange(warna) }
+                )
             }
         }
     }
