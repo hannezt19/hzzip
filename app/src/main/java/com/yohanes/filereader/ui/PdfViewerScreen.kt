@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.style.TextOverflow
 import com.yohanes.filereader.data.FavoritesStore
+import com.yohanes.filereader.data.PageBitmapCache
 import com.yohanes.filereader.data.PdfTextExtractor
 import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
@@ -231,7 +232,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 if (readerSettings.navMode == NavigasiMode.SWIPE) {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = 1
                     ) { pageIndex ->
                         if (modeBacaActive) {
                             ReflowPage(
@@ -1001,10 +1003,20 @@ private fun ZoomableImageBox(
 @Composable
 private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
-    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+    val uriKey = uri.toString()
+    var bitmap by remember(pageIndex) { mutableStateOf(PageBitmapCache.get(uriKey, pageIndex)) }
 
     LaunchedEffect(pageIndex) {
-        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+        val cached = PageBitmapCache.get(uriKey, pageIndex)
+        if (cached != null) {
+            bitmap = cached
+        } else {
+            val rendered = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+            if (rendered != null) {
+                PageBitmapCache.put(uriKey, pageIndex, rendered)
+            }
+            bitmap = rendered
+        }
     }
 
     ZoomableImageBox(
