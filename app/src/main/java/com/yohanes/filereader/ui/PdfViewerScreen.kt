@@ -553,13 +553,14 @@ private fun SettingsPanel(
         )
 
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(0.25f)
             ) {
                 IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
                     Text("-", style = MaterialTheme.typography.titleLarge)
@@ -573,27 +574,27 @@ private fun SettingsPanel(
                     Text("+", style = MaterialTheme.typography.titleLarge)
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
-            ) {
+            Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
                 ModeToggleButton("Baca", modeBacaActive) { onModeBacaChange(!modeBacaActive) }
-                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
                 ModeToggleButton("TTS", ttsActive) { onTtsActiveChange(!ttsActive) }
-                Spacer(Modifier.width(8.dp))
+            }
+            Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
                 ModeToggleButton("ID", translateActive) { onTranslateChange(!translateActive) }
             }
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 20.dp),
+            Modifier.fillMaxWidth().padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             NavigasiMode.values().forEach { mode ->
                 val selected = settings.navMode == mode
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .fillMaxWidth(0.25f)
+                        .aspectRatio(1f)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                         .background(
                             if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -618,7 +619,8 @@ private fun SettingsPanel(
                 val selected = settings.warnaLatar == warna
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .fillMaxWidth(0.22f)
+                        .aspectRatio(1f)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                         .background(androidx.compose.ui.graphics.Color(warna.bg))
                         .border(
