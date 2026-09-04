@@ -339,6 +339,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { })
                             },
+                        color = androidx.compose.ui.graphics.Color(0xFF2B2B2E),
                         tonalElevation = 4.dp,
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(
                             topStart = 12.dp,
@@ -510,16 +511,17 @@ private fun ModeToggleButton(label: String, active: Boolean, onClick: () -> Unit
     Box(
         modifier = Modifier
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-            .background(
-                if (active) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant
+            .border(
+                width = if (active) 2.dp else 1.dp,
+                color = if (active) androidx.compose.ui.graphics.Color(0xFF4DD0E1) else androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
             )
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(
             label,
-            color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (active) androidx.compose.ui.graphics.Color(0xFF4DD0E1) else androidx.compose.ui.graphics.Color.LightGray,
             style = MaterialTheme.typography.labelLarge
         )
     }
@@ -619,7 +621,8 @@ private fun SettingsPanel(
                 val selected = settings.warnaLatar == warna
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.22f)
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
                         .fillMaxHeight()
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                         .background(androidx.compose.ui.graphics.Color(warna.bg))
