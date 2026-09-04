@@ -594,7 +594,7 @@ private fun SettingsPanel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.25f)
-                        .aspectRatio(1f)
+                        .fillMaxHeight()
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                         .background(
                             if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -620,7 +620,7 @@ private fun SettingsPanel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.22f)
-                        .aspectRatio(1f)
+                        .fillMaxHeight()
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                         .background(androidx.compose.ui.graphics.Color(warna.bg))
                         .border(
