@@ -38,8 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.PageBitmapCache
 import com.yohanes.filereader.data.PdfRenderSession
-
-val LocalPdfRenderSession = androidx.compose.runtime.compositionLocalOf<PdfRenderSession?> { null }
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.yohanes.filereader.data.PdfTextExtractor
@@ -61,6 +59,8 @@ import com.yohanes.filereader.data.TranslateHelper
 import com.yohanes.filereader.data.ModelDownloadState
 import com.yohanes.filereader.data.TtsHelper
 import kotlinx.coroutines.launch
+
+val LocalPdfRenderSession = androidx.compose.runtime.compositionLocalOf<PdfRenderSession?> { null }
 
 private const val RENDER_SCALE = 2f
 
