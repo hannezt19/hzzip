@@ -334,7 +334,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .fillMaxHeight(0.6f)
+                            .fillMaxHeight(0.38f)
                             .navigationBarsPadding()
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { })
@@ -556,7 +556,11 @@ private fun SettingsPanel(
             Modifier.fillMaxWidth().padding(bottom = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.weight(1f)
+            ) {
                 IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
                     Text("-", style = MaterialTheme.typography.titleLarge)
                 }
@@ -569,23 +573,27 @@ private fun SettingsPanel(
                     Text("+", style = MaterialTheme.typography.titleLarge)
                 }
             }
-            Spacer(Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.weight(1f)
+            ) {
                 ModeToggleButton("Baca", modeBacaActive) { onModeBacaChange(!modeBacaActive) }
+                Spacer(Modifier.width(8.dp))
                 ModeToggleButton("TTS", ttsActive) { onTtsActiveChange(!ttsActive) }
+                Spacer(Modifier.width(8.dp))
                 ModeToggleButton("ID", translateActive) { onTranslateChange(!translateActive) }
             }
         }
 
         Row(
             Modifier.fillMaxWidth().padding(bottom = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             NavigasiMode.values().forEach { mode ->
                 val selected = settings.navMode == mode
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(44.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                         .background(
                             if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -604,7 +612,7 @@ private fun SettingsPanel(
 
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             BacaWarnaLatar.values().forEach { warna ->
                 val selected = settings.warnaLatar == warna
