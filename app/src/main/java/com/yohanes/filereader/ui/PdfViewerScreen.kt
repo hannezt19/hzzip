@@ -565,15 +565,16 @@ private fun SettingsPanel(
                 modifier = Modifier.weight(0.25f)
             ) {
                 IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
-                    Text("-", style = MaterialTheme.typography.titleLarge)
+                    Text("-", style = MaterialTheme.typography.titleLarge, color = androidx.compose.ui.graphics.Color.White)
                 }
                 Text(
                     "${settings.textSizeSp.toInt()} sp",
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    color = androidx.compose.ui.graphics.Color.White,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 IconButton(onClick = { onTextSizeChange(settings.textSizeSp + 2f) }) {
-                    Text("+", style = MaterialTheme.typography.titleLarge)
+                    Text("+", style = MaterialTheme.typography.titleLarge, color = androidx.compose.ui.graphics.Color.White)
                 }
             }
             Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
@@ -596,7 +597,7 @@ private fun SettingsPanel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.25f)
-                        .fillMaxHeight()
+                        .height(40.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                         .background(
                             if (selected) MaterialTheme.colorScheme.primaryContainer
@@ -623,7 +624,7 @@ private fun SettingsPanel(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
-                        .fillMaxHeight()
+                        .height(40.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                         .background(androidx.compose.ui.graphics.Color(warna.bg))
                         .border(
