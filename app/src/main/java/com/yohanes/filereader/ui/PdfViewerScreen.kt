@@ -37,10 +37,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.style.TextOverflow
 import com.yohanes.filereader.data.FavoritesStore
-import com.yohanes.filereader.data.PageBitmapCache
-import com.yohanes.filereader.data.PdfRenderSession
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.yohanes.filereader.data.PdfTextExtractor
 import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
@@ -60,8 +56,6 @@ import com.yohanes.filereader.data.TranslateHelper
 import com.yohanes.filereader.data.ModelDownloadState
 import com.yohanes.filereader.data.TtsHelper
 import kotlinx.coroutines.launch
-
-val LocalPdfRenderSession = androidx.compose.runtime.compositionLocalOf<PdfRenderSession?> { null }
 
 private const val RENDER_SCALE = 2f
 
@@ -89,11 +83,13 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
         pageCount = { pageCount }
     )
 
-    val renderSession = remember(uri) { PdfRenderSession(context, uri) }
-    DisposableEffect(renderSession) {
-        pageCount = renderSession.pageCount
+    DisposableEffect(uri) {
+        val pfd = context.contentResolver.openFileDescriptor(uri, "r")
+        val renderer = pfd?.let { PdfRenderer(it) }
+        pageCount = renderer?.pageCount ?: 0
         onDispose {
-            renderSession.close()
+            renderer?.close()
+            pfd?.close()
         }
     }
 
@@ -109,6 +105,14 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
     var fullscreenImages by remember { mutableStateOf<List<Bitmap>?>(null) }
+    val scope = rememberCoroutineScope()
+
+    var ttsActive by remember { mutableStateOf(false) }
+    var ttsPlaying by remember { mutableStateOf(false) }
+    var ttsPanelExpanded by remember { mutableStateOf(false) }
+    var ttsSentences by remember { mutableStateOf<List<String>>(emptyList()) }
+    var ttsSentenceIndex by remember { mutableStateOf(0) }
+    var ttsCurrentPageIndex by remember { mutableStateOf(0) }
 
     BackHandler(enabled = fullscreenImages != null) {
         fullscreenImages = null
@@ -119,14 +123,6 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     BackHandler(enabled = fullscreenImages == null && !settingsModalOpen && modeBacaActive) {
         modeBacaActive = false
     }
-    val scope = rememberCoroutineScope()
-
-    var ttsActive by remember { mutableStateOf(false) }
-    var ttsPlaying by remember { mutableStateOf(false) }
-    var ttsPanelExpanded by remember { mutableStateOf(false) }
-    var ttsSentences by remember { mutableStateOf<List<String>>(emptyList()) }
-    var ttsSentenceIndex by remember { mutableStateOf(0) }
-    var ttsCurrentPageIndex by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         ReaderSettingsStore.ensureLoaded(context)
@@ -162,7 +158,6 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 CircularProgressIndicator()
             }
         } else {
-          androidx.compose.runtime.CompositionLocalProvider(LocalPdfRenderSession provides renderSession) {
             val scrollListState = rememberLazyListState()
             LaunchedEffect(readerSettings.navMode, scrollListState.firstVisibleItemIndex) {
                 if (readerSettings.navMode == NavigasiMode.SCROLL) {
@@ -247,8 +242,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 if (readerSettings.navMode == NavigasiMode.SWIPE) {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        beyondBoundsPageCount = 1
+                        modifier = Modifier.fillMaxSize()
                     ) { pageIndex ->
                         if (modeBacaActive) {
                             ReflowPage(
@@ -507,8 +501,27 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 }
 
             }
-        
-          }}
+        }
+    }
+}
+
+@Composable
+private fun ModeToggleButton(label: String, active: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .background(
+                if (active) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(
+            label,
+            color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
@@ -532,14 +545,18 @@ private fun SettingsPanel(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        Slider(
+            value = settings.contrast,
+            onValueChange = onContrastChange,
+            valueRange = 0.5f..2f,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+        )
+
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().padding(bottom = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
                     Text("-", style = MaterialTheme.typography.titleLarge)
                 }
@@ -552,18 +569,13 @@ private fun SettingsPanel(
                     Text("+", style = MaterialTheme.typography.titleLarge)
                 }
             }
-            Switch(
-                checked = modeBacaActive,
-                onCheckedChange = onModeBacaChange
-            )
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ModeToggleButton("Baca", modeBacaActive) { onModeBacaChange(!modeBacaActive) }
+                ModeToggleButton("TTS", ttsActive) { onTtsActiveChange(!ttsActive) }
+                ModeToggleButton("ID", translateActive) { onTranslateChange(!translateActive) }
+            }
         }
-
-        Slider(
-            value = settings.contrast,
-            onValueChange = onContrastChange,
-            valueRange = 0.5f..2f,
-            modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 20.dp)
-        )
 
         Row(
             Modifier.fillMaxWidth().padding(bottom = 20.dp),
@@ -607,37 +619,6 @@ private fun SettingsPanel(
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                         )
                         .clickable { onWarnaLatarChange(warna) }
-                )
-            }
-        }
-
-        if (modeBacaActive) {
-            Row(
-                Modifier.fillMaxWidth().padding(top = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "ID",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(
-                    checked = translateActive,
-                    onCheckedChange = onTranslateChange
-                )
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "\uD83D\uDD0A",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(
-                    checked = ttsActive,
-                    onCheckedChange = onTtsActiveChange
                 )
             }
         }
@@ -1019,27 +1000,10 @@ private fun ZoomableImageBox(
 @Composable
 private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
-    val session = LocalPdfRenderSession.current
-    val uriKey = uri.toString()
-    var bitmap by remember(pageIndex) { mutableStateOf(PageBitmapCache.get(uriKey, pageIndex)) }
+    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(pageIndex, session) {
-        val cached = PageBitmapCache.get(uriKey, pageIndex)
-        if (cached != null) {
-            bitmap = cached
-        } else {
-            val rendered = if (session != null) {
-                session.renderPage(pageIndex, RENDER_SCALE)
-            } else {
-                withContext(Dispatchers.IO) {
-                    renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
-                }
-            }
-            if (rendered != null) {
-                PageBitmapCache.put(uriKey, pageIndex, rendered)
-            }
-            bitmap = rendered
-        }
+    LaunchedEffect(pageIndex) {
+        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
     }
 
     ZoomableImageBox(
