@@ -37,6 +37,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.style.TextOverflow
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.PageBitmapCache
+import com.yohanes.filereader.data.PdfRenderSession
+
+val LocalPdfRenderSession = androidx.compose.runtime.compositionLocalOf<PdfRenderSession?> { null }
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.yohanes.filereader.data.PdfTextExtractor
@@ -85,13 +88,11 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
         pageCount = { pageCount }
     )
 
-    DisposableEffect(uri) {
-        val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-        val renderer = pfd?.let { PdfRenderer(it) }
-        pageCount = renderer?.pageCount ?: 0
+    val renderSession = remember(uri) { PdfRenderSession(context, uri) }
+    DisposableEffect(renderSession) {
+        pageCount = renderSession.pageCount
         onDispose {
-            renderer?.close()
-            pfd?.close()
+            renderSession.close()
         }
     }
 
@@ -150,6 +151,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 CircularProgressIndicator()
             }
         } else {
+          androidx.compose.runtime.CompositionLocalProvider(LocalPdfRenderSession provides renderSession) {
             val scrollListState = rememberLazyListState()
             LaunchedEffect(readerSettings.navMode, scrollListState.firstVisibleItemIndex) {
                 if (readerSettings.navMode == NavigasiMode.SCROLL) {
@@ -494,7 +496,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 }
 
             }
-        }
+        
+          }}
     }
 }
 
@@ -1005,16 +1008,21 @@ private fun ZoomableImageBox(
 @Composable
 private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
+    val session = LocalPdfRenderSession.current
     val uriKey = uri.toString()
     var bitmap by remember(pageIndex) { mutableStateOf(PageBitmapCache.get(uriKey, pageIndex)) }
 
-    LaunchedEffect(pageIndex) {
+    LaunchedEffect(pageIndex, session) {
         val cached = PageBitmapCache.get(uriKey, pageIndex)
         if (cached != null) {
             bitmap = cached
         } else {
-            val rendered = withContext(Dispatchers.IO) {
-                renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+            val rendered = if (session != null) {
+                session.renderPage(pageIndex, RENDER_SCALE)
+            } else {
+                withContext(Dispatchers.IO) {
+                    renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+                }
             }
             if (rendered != null) {
                 PageBitmapCache.put(uriKey, pageIndex, rendered)
