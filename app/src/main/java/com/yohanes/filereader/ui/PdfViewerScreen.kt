@@ -542,18 +542,18 @@ private fun SettingsPanel(
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Slider(
             value = settings.contrast,
             onValueChange = onContrastChange,
             valueRange = 0.5f..2f,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+            modifier = Modifier.fillMaxWidth().weight(0.237f)
         )
 
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            Modifier.fillMaxWidth().weight(0.237f),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -586,7 +586,7 @@ private fun SettingsPanel(
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            Modifier.fillMaxWidth().weight(0.237f),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             NavigasiMode.values().forEach { mode ->
@@ -612,7 +612,7 @@ private fun SettingsPanel(
         }
 
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().weight(0.237f),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             BacaWarnaLatar.values().forEach { warna ->
