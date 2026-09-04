@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -108,6 +109,16 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
     var fullscreenImages by remember { mutableStateOf<List<Bitmap>?>(null) }
+
+    BackHandler(enabled = fullscreenImages != null) {
+        fullscreenImages = null
+    }
+    BackHandler(enabled = fullscreenImages == null && settingsModalOpen) {
+        settingsModalOpen = false
+    }
+    BackHandler(enabled = fullscreenImages == null && !settingsModalOpen && modeBacaActive) {
+        modeBacaActive = false
+    }
     val scope = rememberCoroutineScope()
 
     var ttsActive by remember { mutableStateOf(false) }
