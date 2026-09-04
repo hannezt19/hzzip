@@ -37,6 +37,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.style.TextOverflow
 import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.PageBitmapCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.yohanes.filereader.data.PdfTextExtractor
 import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
@@ -1011,7 +1013,9 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
         if (cached != null) {
             bitmap = cached
         } else {
-            val rendered = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+            val rendered = withContext(Dispatchers.IO) {
+                renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+            }
             if (rendered != null) {
                 PageBitmapCache.put(uriKey, pageIndex, rendered)
             }
