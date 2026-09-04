@@ -233,7 +233,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
-                        beyondViewportPageCount = 1
+                        beyondBoundsPageCount = 1
                     ) { pageIndex ->
                         if (modeBacaActive) {
                             ReflowPage(
