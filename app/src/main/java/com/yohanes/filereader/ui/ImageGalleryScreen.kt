@@ -15,7 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -35,6 +38,17 @@ fun ImageGalleryScreen(
     onFileClick: (FileEntity) -> Unit
 ) {
     val grouped = remember(files) { groupByDate(files) }
+    val flatFiles = remember(grouped) { grouped.flatMap { it.second } }
+    var pagerIndex by remember { mutableStateOf<Int?>(null) }
+
+    if (pagerIndex != null) {
+        ImagePagerScreen(
+            files = flatFiles,
+            initialIndex = pagerIndex!!,
+            onExit = { pagerIndex = null }
+        )
+        return
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -52,7 +66,10 @@ fun ImageGalleryScreen(
                 )
             }
             items(filesInGroup, key = { it.path }) { file ->
-                ImageThumbnail(file = file, onClick = { onFileClick(file) })
+                ImageThumbnail(
+                    file = file,
+                    onClick = { pagerIndex = flatFiles.indexOf(file) }
+                )
             }
         }
     }
