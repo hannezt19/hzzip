@@ -119,10 +119,13 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     BackHandler(enabled = fullscreenImages != null) {
         fullscreenImages = null
     }
-    BackHandler(enabled = fullscreenImages == null && settingsModalOpen) {
+    BackHandler(enabled = fullscreenImages == null && ttsPanelExpanded) {
+        ttsPanelExpanded = false
+    }
+    BackHandler(enabled = fullscreenImages == null && !ttsPanelExpanded && settingsModalOpen) {
         settingsModalOpen = false
     }
-    BackHandler(enabled = fullscreenImages == null && !settingsModalOpen && modeBacaActive) {
+    BackHandler(enabled = fullscreenImages == null && !ttsPanelExpanded && !settingsModalOpen && modeBacaActive) {
         modeBacaActive = false
     }
 
@@ -323,20 +326,22 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     color = androidx.compose.ui.graphics.Color.White
                 )
 
-                if (settingsModalOpen) {
+                if (settingsModalOpen || ttsPanelExpanded) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f))
                             .pointerInput(Unit) {
-                                detectTapGestures(onTap = { settingsModalOpen = false })
+                                detectTapGestures(onTap = {
+                                    if (ttsPanelExpanded) ttsPanelExpanded = false else settingsModalOpen = false
+                                })
                             }
                     )
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .fillMaxHeight(0.38f)
+                            .fillMaxHeight(0.42f)
                             .navigationBarsPadding()
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { })
@@ -348,26 +353,35 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             topEnd = 12.dp
                         )
                     ) {
-                        SettingsPanel(
-                            modeBacaActive = modeBacaActive,
-                            onModeBacaChange = { modeBacaActive = it },
-                            translateActive = translateActive,
-                            onTranslateChange = { translateActive = it },
-                            ttsActive = ttsActive,
-                            onTtsActiveChange = { active ->
-                                ttsActive = active
-                                if (!active) {
-                                    TtsHelper.stop()
-                                    ttsPlaying = false
-                                    ttsPanelExpanded = false
-                                }
-                            },
-                            settings = readerSettings,
-                            onTextSizeChange = { ReaderSettingsStore.setTextSize(context, it) },
-                            onContrastChange = { ReaderSettingsStore.setContrast(context, it) },
-                            onWarnaLatarChange = { ReaderSettingsStore.setWarnaLatar(context, it) },
-                            onNavModeChange = { ReaderSettingsStore.setNavMode(context, it) }
-                        )
+                        if (ttsPanelExpanded) {
+                            VolumePanel(
+                                settings = readerSettings,
+                                onVolumeChange = { ReaderSettingsStore.setTtsVolume(context, it) },
+                                onPitchChange = { ReaderSettingsStore.setTtsPitch(context, it) },
+                                onSpeedChange = { ReaderSettingsStore.setTtsSpeed(context, it) }
+                            )
+                        } else {
+                            SettingsPanel(
+                                modeBacaActive = modeBacaActive,
+                                onModeBacaChange = { modeBacaActive = it },
+                                translateActive = translateActive,
+                                onTranslateChange = { translateActive = it },
+                                ttsActive = ttsActive,
+                                onTtsActiveChange = { active ->
+                                    ttsActive = active
+                                    if (!active) {
+                                        TtsHelper.stop()
+                                        ttsPlaying = false
+                                        ttsPanelExpanded = false
+                                    }
+                                },
+                                settings = readerSettings,
+                                onTextSizeChange = { ReaderSettingsStore.setTextSize(context, it) },
+                                onContrastChange = { ReaderSettingsStore.setContrast(context, it) },
+                                onWarnaLatarChange = { ReaderSettingsStore.setWarnaLatar(context, it) },
+                                onNavModeChange = { ReaderSettingsStore.setNavMode(context, it) }
+                            )
+                        }
                     }
                 }
 
@@ -405,7 +419,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 }
 
                 if (ttsActive) {
-                    val ttsBarBottomPadding = if (settingsModalOpen) maxHeight * 0.38f else 0.dp
+                    val ttsBarBottomPadding = if (settingsModalOpen || ttsPanelExpanded) maxHeight * 0.42f else 0.dp
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -450,53 +464,6 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         }
                     }
 
-                    if (ttsPanelExpanded) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .navigationBarsPadding(),
-                            tonalElevation = 6.dp,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-                        ) {
-                            Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                                Text("Volume", style = MaterialTheme.typography.labelMedium)
-                                Slider(
-                                    value = readerSettings.ttsVolume,
-                                    onValueChange = { ReaderSettingsStore.setTtsVolume(context, it) },
-                                    valueRange = 0f..1f
-                                )
-                                Text("Pitch (Nada)", style = MaterialTheme.typography.labelMedium)
-                                Slider(
-                                    value = readerSettings.ttsPitch,
-                                    onValueChange = { ReaderSettingsStore.setTtsPitch(context, it) },
-                                    valueRange = 0.5f..2f
-                                )
-                                Text("Speed (Kecepatan)", style = MaterialTheme.typography.labelMedium)
-                                Slider(
-                                    value = readerSettings.ttsSpeed,
-                                    onValueChange = { ReaderSettingsStore.setTtsSpeed(context, it) },
-                                    valueRange = 0.5f..2f
-                                )
-                                Row(
-                                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    IconButton(onClick = {
-                                        TtsHelper.stop()
-                                        ttsPlaying = false
-                                        ttsSentenceIndex = 0
-                                    }) { Text("\u23F9") }
-                                    IconButton(onClick = {
-                                        TtsHelper.stop()
-                                        ttsPlaying = false
-                                        ttsActive = false
-                                        ttsPanelExpanded = false
-                                    }) { Text("\u2715") }
-                                }
-                            }
-                        }
-                    }
                 }
 
             }
@@ -520,6 +487,51 @@ private fun TtsPillButton(icon: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(icon, color = androidx.compose.ui.graphics.Color.Black, style = MaterialTheme.typography.titleLarge)
+    }
+}
+
+@Composable
+private fun StyledSlider(value: Float, onValueChange: (Float) -> Unit, valueRange: ClosedFloatingPointRange<Float>) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .border(
+                width = 1.dp,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.15f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            )
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun VolumePanel(
+    settings: ReaderSettings,
+    onVolumeChange: (Float) -> Unit,
+    onPitchChange: (Float) -> Unit,
+    onSpeedChange: (Float) -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Text("Volume", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color.White)
+        StyledSlider(value = settings.ttsVolume, onValueChange = onVolumeChange, valueRange = 0f..1f)
+        Text("Pitch (Nada)", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color.White)
+        StyledSlider(value = settings.ttsPitch, onValueChange = onPitchChange, valueRange = 0.5f..2f)
+        Text("Speed (Kecepatan)", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color.White)
+        StyledSlider(value = settings.ttsSpeed, onValueChange = onSpeedChange, valueRange = 0.5f..2f)
     }
 }
 
@@ -565,12 +577,9 @@ private fun SettingsPanel(
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Slider(
-            value = settings.contrast,
-            onValueChange = onContrastChange,
-            valueRange = 0.5f..2f,
-            modifier = Modifier.fillMaxWidth().weight(0.237f)
-        )
+        Box(modifier = Modifier.fillMaxWidth().weight(0.237f), contentAlignment = Alignment.Center) {
+            StyledSlider(value = settings.contrast, onValueChange = onContrastChange, valueRange = 0.5f..2f)
+        }
 
         Row(
             Modifier.fillMaxWidth().weight(0.237f),
@@ -661,8 +670,8 @@ private fun SettingsPanel(
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                         .background(androidx.compose.ui.graphics.Color(warna.bg))
                         .border(
-                            width = if (selected) 3.dp else 1.dp,
-                            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
+                            width = if (selected) 2.dp else 1.dp,
+                            color = androidx.compose.ui.graphics.Color(0xFF4DD0E1).copy(alpha = if (selected) 1f else 0.4f),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                         )
                         .clickable { onWarnaLatarChange(warna) }
