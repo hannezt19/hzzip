@@ -507,17 +507,18 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 }
 
 @Composable
-private fun ModeToggleButton(label: String, active: Boolean, onClick: () -> Unit) {
+private fun ModeToggleButton(label: String, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        modifier = Modifier
+        modifier = modifier
+            .height(40.dp)
             .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
             .border(
                 width = if (active) 2.dp else 1.dp,
-                color = if (active) androidx.compose.ui.graphics.Color(0xFF4DD0E1) else androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
+                color = androidx.compose.ui.graphics.Color(0xFF4DD0E1).copy(alpha = if (active) 1f else 0.4f),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
             )
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
     ) {
         Text(
             label,
@@ -561,31 +562,43 @@ private fun SettingsPanel(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(0.25f)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.weight(1.15f)
             ) {
-                IconButton(onClick = { onTextSizeChange(settings.textSizeSp - 2f) }) {
-                    Text("-", style = MaterialTheme.typography.titleLarge, color = androidx.compose.ui.graphics.Color.White)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.15f))
+                        .clickable { onTextSizeChange(settings.textSizeSp - 2f) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("-", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleMedium)
                 }
                 Text(
-                    "${settings.textSizeSp.toInt()} sp",
+                    "${settings.textSizeSp.toInt()}sp",
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     color = androidx.compose.ui.graphics.Color.White,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 2.dp)
                 )
-                IconButton(onClick = { onTextSizeChange(settings.textSizeSp + 2f) }) {
-                    Text("+", style = MaterialTheme.typography.titleLarge, color = androidx.compose.ui.graphics.Color.White)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.15f))
+                        .clickable { onTextSizeChange(settings.textSizeSp + 2f) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("+", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleMedium)
                 }
             }
-            Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
-                ModeToggleButton("Baca", modeBacaActive) { onModeBacaChange(!modeBacaActive) }
-            }
-            Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
-                ModeToggleButton("TTS", ttsActive) { onTtsActiveChange(!ttsActive) }
-            }
-            Box(modifier = Modifier.weight(0.22f), contentAlignment = Alignment.Center) {
-                ModeToggleButton("ID", translateActive) { onTranslateChange(!translateActive) }
-            }
+            Spacer(Modifier.width(6.dp))
+            ModeToggleButton("Baca", modeBacaActive, modifier = Modifier.weight(1f)) { onModeBacaChange(!modeBacaActive) }
+            Spacer(Modifier.width(6.dp))
+            ModeToggleButton("TTS", ttsActive, modifier = Modifier.weight(1f)) { onTtsActiveChange(!ttsActive) }
+            Spacer(Modifier.width(6.dp))
+            ModeToggleButton("ID", translateActive, modifier = Modifier.weight(1f)) { onTranslateChange(!translateActive) }
         }
 
         Row(
@@ -596,18 +609,21 @@ private fun SettingsPanel(
                 val selected = settings.navMode == mode
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.25f)
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
                         .height(40.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                        .background(
-                            if (selected) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant
+                        .border(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = androidx.compose.ui.graphics.Color(0xFF4DD0E1).copy(alpha = if (selected) 1f else 0.4f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                         )
                         .clickable { onNavModeChange(mode) },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         if (mode == NavigasiMode.SWIPE) "\u2194" else "\u2195",
+                        color = if (selected) androidx.compose.ui.graphics.Color(0xFF4DD0E1) else androidx.compose.ui.graphics.Color.LightGray,
                         style = MaterialTheme.typography.titleLarge
                     )
                 }
