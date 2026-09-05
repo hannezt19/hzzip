@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -38,6 +39,7 @@ import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.FileEntity
 import java.io.File
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ImagePagerScreen(
     files: List<FileEntity>,
