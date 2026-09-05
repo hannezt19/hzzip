@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yohanes.filereader.data.ThemeStore
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -16,7 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yohanes.filereader.ui.CodeEditorScreen
 import com.yohanes.filereader.ui.HomeScreen
+import com.yohanes.filereader.ui.HomeViewModel
 import com.yohanes.filereader.ui.PdfViewerScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -27,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private var currentType by mutableStateOf(FileType.UNKNOWN)
     private var currentName by mutableStateOf("")
     private var currentContent by mutableStateOf("")
+    private var isLoadingContent by mutableStateOf(false)
 
     private val openDocumentLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -86,9 +93,15 @@ class MainActivity : ComponentActivity() {
         currentUri = uri
         currentName = name
         currentType = type
+        currentContent = ""
 
         if (type != FileType.PDF && type != FileType.UNKNOWN && type != FileType.IMAGE && type != FileType.XLSX) {
-            currentContent = readText(uri)
+            isLoadingContent = true
+            lifecycleScope.launch {
+                val text = withContext(Dispatchers.IO) { readText(uri) }
+                currentContent = text
+                isLoadingContent = false
+            }
         }
     }
 
@@ -136,17 +149,26 @@ class MainActivity : ComponentActivity() {
         }
         if (uri == null) {
             var selectedTab by remember { mutableStateOf(com.yohanes.filereader.ui.AppTab.HOME) }
+            val homeViewModel: HomeViewModel = viewModel()
             androidx.compose.material3.Scaffold(
                 bottomBar = {
                     com.yohanes.filereader.ui.BottomNavBar(
                         selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it }
+                        onTabSelected = { tab ->
+                            if (tab == com.yohanes.filereader.ui.AppTab.HOME &&
+                                selectedTab == com.yohanes.filereader.ui.AppTab.HOME
+                            ) {
+                                homeViewModel.onCategorySelected(null)
+                            }
+                            selectedTab = tab
+                        }
                     )
                 }
             ) { padding ->
                 Box(Modifier.padding(padding)) {
                     when (selectedTab) {
                         com.yohanes.filereader.ui.AppTab.HOME -> HomeScreen(
+                            viewModel = homeViewModel,
                             onFileClick = { file ->
                                 loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
                             },
@@ -179,18 +201,26 @@ class MainActivity : ComponentActivity() {
             FileType.IMAGE -> com.yohanes.filereader.ui.ImageViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.XLSX -> com.yohanes.filereader.ui.XlsxViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.UNKNOWN -> UnsupportedState(currentName)
-            else -> CodeEditorScreen(
-                uri = uri,
-                displayName = currentName,
-                fileType = currentType,
-                initialContent = currentContent,
-                onSave = { text -> writeText(uri, text) },
-                onSaveAs = { text ->
-                    pendingSaveAsText = text
-                    createDocumentLauncher.launch(currentName)
-                },
-                onExit = { currentUri = null }
-            )
+            else -> {
+                if (isLoadingContent) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    CodeEditorScreen(
+                        uri = uri,
+                        displayName = currentName,
+                        fileType = currentType,
+                        initialContent = currentContent,
+                        onSave = { text -> writeText(uri, text) },
+                        onSaveAs = { text ->
+                            pendingSaveAsText = text
+                            createDocumentLauncher.launch(currentName)
+                        },
+                        onExit = { currentUri = null }
+                    )
+                }
+            }
         }
     }
 }

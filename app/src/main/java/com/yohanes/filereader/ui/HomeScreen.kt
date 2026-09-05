@@ -14,15 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yohanes.filereader.data.FileEntity
 
 @Composable
 fun HomeScreen(
+    viewModel: HomeViewModel,
     onFileClick: (FileEntity) -> Unit,
     onPickFileManually: () -> Unit
 ) {
-    val viewModel: HomeViewModel = viewModel()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
 
     BackHandler(enabled = selectedCategory != null) {
