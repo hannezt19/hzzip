@@ -1,37 +1,63 @@
 package com.yohanes.filereader.ui
 
-import android.text.Editable
-import android.text.Spannable
-import android.text.TextWatcher
-import android.text.style.ForegroundColorSpan
-import android.widget.ScrollView
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.sp
 import com.yohanes.filereader.FileType
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-private data class EditOp(val start: Int, val removed: String, val inserted: String)
+private data class LineEntry(val id: Long, val text: String)
+
+private data class LineChangeOp(
+    val startIndex: Int,
+    val oldEntries: List<LineEntry>,
+    val newEntries: List<LineEntry>
+)
 
 private class EditHistory(private val maxSize: Int = 200) {
-    val undoStack = ArrayDeque<EditOp>()
-    val redoStack = ArrayDeque<EditOp>()
-
-    fun push(op: EditOp) {
+    val undoStack = ArrayDeque<LineChangeOp>()
+    val redoStack = ArrayDeque<LineChangeOp>()
+    fun push(op: LineChangeOp) {
         undoStack.addLast(op)
         if (undoStack.size > maxSize) undoStack.removeFirst()
         redoStack.clear()
     }
 }
 
+/**
+ * Editor teks/kode berbasis LazyColumn PER BARIS - bukan satu BasicTextField
+ * atau EditText raksasa untuk seluruh file. LazyColumn cuma memproses baris
+ * yang benar-benar terlihat di layar, jadi file besar (puluhan ribu baris)
+ * sama cepatnya dibuka dengan file kecil. Ini rombakan ke-2 dari editor ini
+ * setelah pendekatan EditText native (rombakan ke-1) ternyata masih belum
+ * cukup cepat untuk file sangat besar (10MB+).
+ */
 @Composable
 fun CodeEditorScreen(
     uri: android.net.Uri,
@@ -42,14 +68,22 @@ fun CodeEditorScreen(
     onSaveAs: (String) -> Unit,
     onExit: () -> Unit
 ) {
-    val editTextRef = remember { mutableStateOf<LineNumberEditText?>(null) }
+    var nextId by remember { mutableStateOf(0L) }
+    fun newId(): Long { val id = nextId; nextId += 1; return id }
+
+    val lines = remember {
+        mutableStateListOf<LineEntry>().apply {
+            initialContent.split("\n").forEach { add(LineEntry(newId(), it)) }
+        }
+    }
     val history = remember { EditHistory() }
-    var isDirty by remember { mutableStateOf(false) }
     var canUndo by remember { mutableStateOf(false) }
     var canRedo by remember { mutableStateOf(false) }
+    var isDirty by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
-    var applyingHistory by remember { mutableStateOf(false) }
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    var focusRequestIndex by remember { mutableStateOf<Int?>(null) }
+    var focusRequestCursor by remember { mutableStateOf(0) }
+    val listState = rememberLazyListState()
 
     val favKey = uri.path ?: uri.toString()
     val favorites by com.yohanes.filereader.data.FavoritesStore.favorites.collectAsState()
@@ -61,45 +95,72 @@ fun CodeEditorScreen(
         isDirty = history.undoStack.isNotEmpty()
     }
 
-    fun rehighlightRange(editText: LineNumberEditText, changeStart: Int, changeEndHint: Int) {
-        val editable = editText.text as? Editable ?: return
-        val layout = editText.layout ?: return
-        val safeStart = changeStart.coerceIn(0, editable.length)
-        val safeEndHint = changeEndHint.coerceIn(0, editable.length)
-        val startLine = layout.getLineForOffset(safeStart)
-        val endLine = layout.getLineForOffset(safeEndHint).coerceAtMost((layout.lineCount - 1).coerceAtLeast(0))
-        val from = layout.getLineStart(startLine).coerceIn(0, editable.length)
-        val to = layout.getLineEnd(endLine).coerceIn(from, editable.length)
-
-        editable.getSpans(from, to, ForegroundColorSpan::class.java).forEach { editable.removeSpan(it) }
-        val lineText = editable.substring(from, to)
-        val spans = computeHighlightSpans(lineText, fileType, offset = from)
-        for (span in spans) {
-            editable.setSpan(
-                ForegroundColorSpan(span.color),
-                span.start, span.end,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
+    fun applyForward(op: LineChangeOp) {
+        repeat(op.oldEntries.size) { lines.removeAt(op.startIndex) }
+        lines.addAll(op.startIndex, op.newEntries)
     }
 
-    fun applyOpInverse(editText: LineNumberEditText, op: EditOp) {
-        applyingHistory = true
-        val editable = editText.text as Editable
-        editable.replace(op.start, op.start + op.inserted.length, op.removed)
-        editText.setSelection((op.start + op.removed.length).coerceIn(0, editable.length))
-        applyingHistory = false
-        rehighlightRange(editText, op.start, op.start + op.removed.length)
+    fun applyInverse(op: LineChangeOp) {
+        repeat(op.newEntries.size) { lines.removeAt(op.startIndex) }
+        lines.addAll(op.startIndex, op.oldEntries)
     }
 
-    fun applyOpForward(editText: LineNumberEditText, op: EditOp) {
-        applyingHistory = true
-        val editable = editText.text as Editable
-        editable.replace(op.start, op.start + op.removed.length, op.inserted)
-        editText.setSelection((op.start + op.inserted.length).coerceIn(0, editable.length))
-        applyingHistory = false
-        rehighlightRange(editText, op.start, op.start + op.inserted.length)
+    fun commitSingleLineEdit(index: Int, oldText: String, newText: String) {
+        if (oldText == newText || index !in lines.indices) return
+        val id = lines[index].id
+        val op = LineChangeOp(index, listOf(LineEntry(id, oldText)), listOf(LineEntry(id, newText)))
+        lines[index] = LineEntry(id, newText)
+        history.push(op)
+        refreshHistoryState()
     }
+
+    fun commitEnter(index: Int, before: String, after: String) {
+        if (index !in lines.indices) return
+        val oldEntry = lines[index]
+        val newFirst = LineEntry(oldEntry.id, before)
+        val newSecond = LineEntry(newId(), after)
+        val op = LineChangeOp(index, listOf(oldEntry), listOf(newFirst, newSecond))
+        applyForward(op)
+        history.push(op)
+        refreshHistoryState()
+        focusRequestIndex = index + 1
+        focusRequestCursor = 0
+    }
+
+    fun commitBackspaceMerge(index: Int) {
+        if (index <= 0 || index !in lines.indices) return
+        val prevEntry = lines[index - 1]
+        val currEntry = lines[index]
+        val merged = LineEntry(prevEntry.id, prevEntry.text + currEntry.text)
+        val op = LineChangeOp(index - 1, listOf(prevEntry, currEntry), listOf(merged))
+        applyForward(op)
+        history.push(op)
+        refreshHistoryState()
+        focusRequestIndex = index - 1
+        focusRequestCursor = prevEntry.text.length
+    }
+
+    fun undo() {
+        if (history.undoStack.isEmpty()) return
+        val op = history.undoStack.removeLast()
+        applyInverse(op)
+        history.redoStack.addLast(op)
+        refreshHistoryState()
+        focusRequestIndex = op.startIndex
+        focusRequestCursor = op.oldEntries.lastOrNull()?.text?.length ?: 0
+    }
+
+    fun redo() {
+        if (history.redoStack.isEmpty()) return
+        val op = history.redoStack.removeLast()
+        applyForward(op)
+        history.undoStack.addLast(op)
+        refreshHistoryState()
+        focusRequestIndex = op.startIndex
+        focusRequestCursor = op.newEntries.lastOrNull()?.text?.length ?: 0
+    }
+
+    fun currentFullText(): String = lines.joinToString("\n") { it.text }
 
     if (showConfirmDialog) {
         AlertDialog(
@@ -108,7 +169,7 @@ fun CodeEditorScreen(
             text = { Text("Simpan perubahan sebelum keluar?") },
             confirmButton = {
                 TextButton(onClick = {
-                    editTextRef.value?.let { onSave(it.text.toString()) }
+                    onSave(currentFullText())
                     showConfirmDialog = false
                     onExit()
                 }) { Text("Simpan") }
@@ -137,96 +198,111 @@ fun CodeEditorScreen(
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = "Favorit",
-                    tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
+                    tint = if (isFav) Color(0xFFFFC107) else Color.Gray
                 )
             }
             Spacer(Modifier.width(4.dp))
-            TextButton(enabled = canUndo, onClick = {
-                val editText = editTextRef.value ?: return@TextButton
-                if (history.undoStack.isNotEmpty()) {
-                    val op = history.undoStack.removeLast()
-                    applyOpInverse(editText, op)
-                    history.redoStack.addLast(op)
-                    refreshHistoryState()
-                }
-            }) { Text("Undo") }
+            TextButton(enabled = canUndo, onClick = { undo() }) { Text("Undo") }
             Spacer(Modifier.width(4.dp))
-            TextButton(enabled = canRedo, onClick = {
-                val editText = editTextRef.value ?: return@TextButton
-                if (history.redoStack.isNotEmpty()) {
-                    val op = history.redoStack.removeLast()
-                    applyOpForward(editText, op)
-                    history.undoStack.addLast(op)
-                    refreshHistoryState()
-                }
-            }) { Text("Redo") }
+            TextButton(enabled = canRedo, onClick = { redo() }) { Text("Redo") }
             Spacer(Modifier.width(4.dp))
-            Button(onClick = {
-                editTextRef.value?.let { onSave(it.text.toString()) }
-            }) { Text("Simpan") }
+            Button(onClick = { onSave(currentFullText()) }) { Text("Simpan") }
         }
 
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                val editText = LineNumberEditText(ctx).apply {
-                    setText(initialContent)
-                    textSize = 14f
-                    setTypeface(android.graphics.Typeface.MONOSPACE)
-                    setTextColor(onSurfaceColor)
-                }
-                editTextRef.value = editText
+        val digitWidth = lines.size.toString().length.coerceAtLeast(2)
 
-                editText.addTextChangedListener(object : TextWatcher {
-                    var editStart = 0
-                    var editRemoved = ""
-                    var editInserted = ""
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            itemsIndexed(lines, key = { _, entry -> entry.id }) { index, entry ->
+                CodeLineRow(
+                    entry = entry,
+                    fileType = fileType,
+                    numberLabel = (index + 1).toString().padStart(digitWidth),
+                    requestFocus = focusRequestIndex == index,
+                    requestCursor = focusRequestCursor,
+                    onFocusHandled = { if (focusRequestIndex == index) focusRequestIndex = null },
+                    onTextChange = { newText -> commitSingleLineEdit(index, entry.text, newText) },
+                    onEnter = { before, after -> commitEnter(index, before, after) },
+                    onBackspaceAtStart = { commitBackspaceMerge(index) }
+                )
+            }
+        }
+    }
+}
 
-                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                        if (applyingHistory) return
-                        editStart = start
-                        editRemoved = s?.subSequence(start, start + count)?.toString() ?: ""
-                    }
+@Composable
+private fun CodeLineRow(
+    entry: LineEntry,
+    fileType: FileType,
+    numberLabel: String,
+    requestFocus: Boolean,
+    requestCursor: Int,
+    onFocusHandled: () -> Unit,
+    onTextChange: (String) -> Unit,
+    onEnter: (before: String, after: String) -> Unit,
+    onBackspaceAtStart: () -> Unit
+) {
+    var value by remember(entry.id) { mutableStateOf(TextFieldValue(entry.text)) }
+    LaunchedEffect(entry.text) {
+        if (value.text != entry.text) value = TextFieldValue(entry.text)
+    }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(requestFocus) {
+        if (requestFocus) {
+            focusRequester.requestFocus()
+            value = value.copy(selection = TextRange(requestCursor.coerceIn(0, value.text.length)))
+            onFocusHandled()
+        }
+    }
+    val highlightSpans = remember(entry.text, fileType) { computeHighlightSpans(entry.text, fileType) }
 
-                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                        if (applyingHistory) return
-                        editInserted = s?.subSequence(start, start + count)?.toString() ?: ""
-                    }
-
-                    override fun afterTextChanged(s: Editable?) {
-                        if (applyingHistory || s == null) return
-                        if (editRemoved.isEmpty() && editInserted.isEmpty()) return
-                        history.push(EditOp(editStart, editRemoved, editInserted))
-                        refreshHistoryState()
-                        rehighlightRange(editText, editStart, editStart + editInserted.length)
-                    }
-                })
-
-                ScrollView(ctx).apply {
-                    isFillViewport = true
-                    addView(editText)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(
+            text = numberLabel,
+            color = Color.Gray,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(start = 8.dp, top = 2.dp, end = 8.dp)
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = { new ->
+                if ('\n' in new.text) {
+                    val idx = new.text.indexOf('\n')
+                    val before = new.text.substring(0, idx)
+                    val after = new.text.substring(idx + 1)
+                    value = TextFieldValue(before)
+                    onEnter(before, after)
+                } else {
+                    value = new
+                    onTextChange(new.text)
                 }
             },
-            update = { scrollView ->
-                (scrollView.getChildAt(0) as? LineNumberEditText)?.setTextColor(onSurfaceColor)
+            textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp),
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 2.dp, end = 8.dp)
+                .focusRequester(focusRequester)
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        event.key == Key.Backspace &&
+                        value.selection.start == 0 &&
+                        value.selection.end == 0
+                    ) {
+                        onBackspaceAtStart()
+                        true
+                    } else {
+                        false
+                    }
+                },
+            visualTransformation = { text ->
+                val builder = AnnotatedString.Builder(text.text)
+                for (span in highlightSpans) {
+                    if (span.end <= text.text.length) {
+                        builder.addStyle(SpanStyle(color = Color(span.color)), span.start, span.end)
+                    }
+                }
+                TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
             }
         )
-    }
-
-    LaunchedEffect(editTextRef.value) {
-        val editText = editTextRef.value ?: return@LaunchedEffect
-        val spans = withContext(Dispatchers.Default) {
-            computeHighlightSpans(initialContent, fileType)
-        }
-        val editable = editText.text as? Editable ?: return@LaunchedEffect
-        for (span in spans) {
-            if (span.end <= editable.length) {
-                editable.setSpan(
-                    ForegroundColorSpan(span.color),
-                    span.start, span.end,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-        }
     }
 }
