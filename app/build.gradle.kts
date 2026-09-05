@@ -77,4 +77,5 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

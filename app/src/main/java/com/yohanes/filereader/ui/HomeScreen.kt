@@ -263,6 +263,8 @@ private fun CategoryDetailScreen(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Tidak ada file di kategori ini")
             }
+        } else if (category == "Gambar") {
+            ImageGalleryScreen(files = files, onFileClick = onFileClick)
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(files) { file ->
