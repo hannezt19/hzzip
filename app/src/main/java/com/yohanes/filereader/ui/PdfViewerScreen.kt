@@ -409,14 +409,16 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = ttsBarBottomPadding + 12.dp),
+                            .navigationBarsPadding()
+                            .padding(bottom = ttsBarBottomPadding + 20.dp)
+                            .fillMaxWidth(0.85f),
                         color = androidx.compose.ui.graphics.Color.Black,
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
                     ) {
                         Row(
-                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             TtsPillButton(icon = "\u23EA") {
                                 val newIndex = (ttsSentenceIndex - 1).coerceAtLeast(0)
