@@ -114,16 +114,13 @@ fun CodeEditorScreen(
 
         Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             val lineCount = field.text.count { it == '\n' } + 1
-            Column(Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp)) {
-                for (i in 1..lineCount) {
-                    Text(
-                        text = i.toString(),
-                        color = Color.Gray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 14.sp
-                    )
-                }
-            }
+            Text(
+                text = remember(lineCount) { (1..lineCount).joinToString("\n") },
+                color = Color.Gray,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp)
+            )
 
             BasicTextField(
                 value = field,

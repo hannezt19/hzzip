@@ -13,6 +13,8 @@ private val COLOR_NUMBER = Color(0xFFB5CEA8)
 private val COLOR_TAG = Color(0xFF569CD6)
 private val COLOR_ATTR = Color(0xFF9CDCFE)
 
+private const val MAX_HIGHLIGHT_LENGTH = 150_000
+
 private val JS_KEYWORDS = listOf(
     "const", "let", "var", "function", "return", "if", "else", "for", "while",
     "class", "new", "this", "import", "export", "default", "from", "async",
@@ -22,8 +24,11 @@ private val JS_KEYWORDS = listOf(
 /**
  * Highlighter ringan berbasis regex. Cukup untuk file kecil-menengah tanpa
  * perlu library parser berat yang bisa memberatkan device RAM kecil.
+ * Untuk file besar (di atas MAX_HIGHLIGHT_LENGTH), highlighting dilewati
+ * supaya editor tetap responsif - teks tetap tampil apa adanya.
  */
 fun highlight(text: String, type: FileType): AnnotatedString {
+    if (text.length > MAX_HIGHLIGHT_LENGTH) return AnnotatedString(text)
     return when (type) {
         FileType.JSON -> highlightJson(text)
         FileType.JS -> highlightJs(text)
