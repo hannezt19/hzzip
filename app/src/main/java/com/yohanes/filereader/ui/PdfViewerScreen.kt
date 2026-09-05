@@ -42,6 +42,8 @@ import com.yohanes.filereader.data.OcrStore
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
@@ -238,7 +240,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 if (readerSettings.navMode == NavigasiMode.SWIPE) {
                     HorizontalPager(
                         state = pagerState,
@@ -403,34 +405,28 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 }
 
                 if (ttsActive) {
+                    val ttsBarBottomPadding = if (settingsModalOpen) maxHeight * 0.38f else 0.dp
                     Surface(
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 8.dp, start = 12.dp, end = 12.dp)
-                            .fillMaxWidth(),
-                        tonalElevation = 6.dp,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = ttsBarBottomPadding + 12.dp),
+                        color = androidx.compose.ui.graphics.Color.Black,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
                     ) {
                         Row(
-                            Modifier.fillMaxWidth().padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                ttsSentences.getOrNull(ttsSentenceIndex) ?: "Ketuk putar untuk mulai membaca",
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f).padding(end = 4.dp)
-                            )
-                            IconButton(onClick = {
+                            TtsPillButton(icon = "\u23EA") {
                                 val newIndex = (ttsSentenceIndex - 1).coerceAtLeast(0)
                                 if (ttsPlaying) {
                                     playFromPage(ttsCurrentPageIndex, newIndex)
                                 } else {
                                     ttsSentenceIndex = newIndex
                                 }
-                            }) { Text("\u23EA") }
-                            IconButton(onClick = {
+                            }
+                            TtsPillButton(icon = if (ttsPlaying) "\u23F8" else "\u25B6") {
                                 if (ttsPlaying) {
                                     TtsHelper.stop()
                                     ttsPlaying = false
@@ -438,8 +434,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                     val pageIdx = if (readerSettings.navMode == NavigasiMode.SWIPE) pagerState.currentPage else scrollListState.firstVisibleItemIndex
                                     playFromPage(pageIdx, ttsSentenceIndex)
                                 }
-                            }) { Text(if (ttsPlaying) "\u23F8" else "\u25B6") }
-                            IconButton(onClick = {
+                            }
+                            TtsPillButton(icon = "\u23E9") {
                                 val maxIndex = (ttsSentences.size - 1).coerceAtLeast(0)
                                 val newIndex = (ttsSentenceIndex + 1).coerceAtMost(maxIndex)
                                 if (ttsPlaying) {
@@ -447,8 +443,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                 } else {
                                     ttsSentenceIndex = newIndex
                                 }
-                            }) { Text("\u23E9") }
-                            IconButton(onClick = { ttsPanelExpanded = !ttsPanelExpanded }) { Text("\u2699") }
+                            }
+                            TtsPillButton(icon = "\u2699") { ttsPanelExpanded = !ttsPanelExpanded }
                         }
                     }
 
@@ -503,6 +499,25 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 
             }
         }
+    }
+}
+
+@Composable
+private fun TtsPillButton(icon: String, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .background(
+                if (pressed) androidx.compose.ui.graphics.Color(0xFFB2EBF2)
+                else androidx.compose.ui.graphics.Color.White
+            )
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(icon, color = androidx.compose.ui.graphics.Color.Black, style = MaterialTheme.typography.titleLarge)
     }
 }
 
