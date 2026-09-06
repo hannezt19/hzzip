@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -212,7 +213,7 @@ private fun categoryIcon(name: String): androidx.compose.ui.graphics.vector.Imag
     return when (name) {
         "PDF" -> Icons.Filled.PictureAsPdf
         "Excel" -> Icons.Filled.TableChart
-        "Gambar" -> ImageIcon
+        "Gambar" -> Icons.Filled.ImageIcon
         "Favorit" -> Icons.Filled.Star
         else -> Icons.Filled.Description
     }
