@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.paging.PagingSource
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -29,4 +30,7 @@ interface FileDao {
 
     @Query("SELECT * FROM files WHERE extension = :ext ORDER BY lastModified DESC")
     fun getByExtension(ext: String): Flow<List<FileEntity>>
+
+    @Query("SELECT * FROM files WHERE extension IN ('jpg','jpeg','png','webp','gif') ORDER BY lastModified DESC")
+    fun getImagesPaged(): PagingSource<Int, FileEntity>
 }

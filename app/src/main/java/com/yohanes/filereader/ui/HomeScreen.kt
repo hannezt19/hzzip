@@ -527,7 +527,7 @@ private fun CategoryDetailScreen(
                 Text("Tidak ada file di kategori ini")
             }
         } else if (category == "Gambar") {
-            ImageGalleryScreen(files = files, onFileClick = onFileClick)
+            ImageGalleryScreen(imagesFlow = viewModel.imagesPaged, onFileClick = onFileClick)
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(files) { file ->

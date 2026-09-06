@@ -5,15 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,31 +19,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
-import androidx.compose.ui.platform.LocalContext
 import com.yohanes.filereader.data.FileEntity
+import kotlinx.coroutines.flow.Flow
 import java.io.File
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun ImageGalleryScreen(
-    files: List<FileEntity>,
+    imagesFlow: Flow<PagingData<FileEntity>>,
     onFileClick: (FileEntity) -> Unit
 ) {
-    val grouped = remember(files) { groupByDate(files) }
-    val flatFiles = remember(grouped) { grouped.flatMap { it.second } }
+    val pagingItems = imagesFlow.collectAsLazyPagingItems()
     var pagerIndex by remember { mutableStateOf<Int?>(null) }
 
     if (pagerIndex != null) {
+        val snapshot = pagingItems.itemSnapshotList.items
         ImagePagerScreen(
-            files = flatFiles,
+            files = snapshot,
             initialIndex = pagerIndex!!,
             onExit = { pagerIndex = null }
         )
@@ -56,22 +52,17 @@ fun ImageGalleryScreen(
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)
+        contentPadding = PaddingValues(4.dp)
     ) {
-        grouped.forEach { (label, filesInGroup) ->
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
-                )
-            }
-            items(filesInGroup, key = { it.path }) { file ->
+        items(
+            count = pagingItems.itemCount,
+            key = pagingItems.itemKey { it.path }
+        ) { index ->
+            val file = pagingItems[index]
+            if (file != null) {
                 ImageThumbnail(
                     file = file,
-                    onClick = { pagerIndex = flatFiles.indexOf(file) }
+                    onClick = { pagerIndex = index }
                 )
             }
         }
@@ -106,21 +97,4 @@ private fun ImageThumbnail(file: FileEntity, onClick: () -> Unit) {
             }
         )
     }
-}
-
-private fun groupByDate(files: List<FileEntity>): List<Pair<String, List<FileEntity>>> {
-    val today = LocalDate.now()
-    val result = LinkedHashMap<String, MutableList<FileEntity>>()
-
-    for (file in files) {
-        val date = Instant.ofEpochMilli(file.lastModified).atZone(ZoneId.systemDefault()).toLocalDate()
-        val label = when {
-            date.isEqual(today) -> "Hari ini"
-            date.isEqual(today.minusDays(1)) -> "Kemarin"
-            else -> date.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("id", "ID")))
-                .replaceFirstChar { it.uppercase() }
-        }
-        result.getOrPut(label) { mutableListOf() }.add(file)
-    }
-    return result.map { it.key to it.value }
 }

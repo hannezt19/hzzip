@@ -5,6 +5,10 @@ import android.os.Environment
 import android.os.StatFs
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
 import com.yohanes.filereader.data.FavoritesStore
@@ -14,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -107,6 +112,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             SortOption.SIZE_LARGEST -> filtered.sortedByDescending { it.sizeBytes }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val imagesPaged: Flow<PagingData<FileEntity>> = Pager(
+        config = PagingConfig(pageSize = 60, prefetchDistance = 20, enablePlaceholders = false)
+    ) {
+        dao.getImagesPaged()
+    }.flow.cachedIn(viewModelScope)
 
     private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
 
