@@ -207,7 +207,7 @@ private fun categoryIcon(name: String): androidx.compose.ui.graphics.vector.Imag
     return when (name) {
         "PDF" -> Icons.Filled.PictureAsPdf
         "Excel" -> Icons.Filled.TableChart
-        "Gambar" -> androidx.compose.material.icons.filled.Image
+        "Gambar" -> ImageIcon
         "Favorit" -> Icons.Filled.Star
         else -> Icons.Filled.Description
     }
