@@ -36,4 +36,7 @@ interface FileDao {
 
     @Query("SELECT * FROM files WHERE extension IN ('mp4','mkv','webm','3gp','avi','mov') ORDER BY lastModified DESC")
     fun getVideos(): Flow<List<FileEntity>>
+
+    @Query("SELECT * FROM files WHERE extension IN ('mp3','wav','m4a','ogg','flac','aac') ORDER BY lastModified DESC")
+    fun getAudios(): Flow<List<FileEntity>>
 }
