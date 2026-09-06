@@ -68,7 +68,8 @@ fun ImagePagerScreen(
         HorizontalPager(
             state = pagerState,
             userScrollEnabled = !zoomedIn,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            beyondBoundsPageCount = 1
         ) { page ->
             val file = files[page]
             ZoomableImage(
