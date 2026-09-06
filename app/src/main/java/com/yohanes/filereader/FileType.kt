@@ -5,7 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 
 enum class FileType {
-    PDF, JSON, HTML, JS, TEXT, IMAGE, XLSX, VIDEO, UNKNOWN
+    PDF, JSON, HTML, JS, TEXT, IMAGE, XLSX, VIDEO, AUDIO, UNKNOWN
 }
 
 object FileTypeDetector {
@@ -27,11 +27,13 @@ object FileTypeDetector {
             name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp") || name.endsWith(".gif") -> return FileType.IMAGE
             name.endsWith(".xlsx") -> return FileType.XLSX
             name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".webm") || name.endsWith(".3gp") || name.endsWith(".avi") || name.endsWith(".mov") -> return FileType.VIDEO
+            name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a") || name.endsWith(".ogg") || name.endsWith(".flac") || name.endsWith(".aac") -> return FileType.AUDIO
         }
 
         val mime = resolver.getType(uri)
         if (mime?.startsWith("image/") == true) return FileType.IMAGE
         if (mime?.startsWith("video/") == true) return FileType.VIDEO
+        if (mime?.startsWith("audio/") == true) return FileType.AUDIO
         if (mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return FileType.XLSX
         return when (mime) {
             "application/pdf" -> FileType.PDF

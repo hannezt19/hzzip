@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
         currentType = type
         currentContent = ""
 
-        if (type != FileType.PDF && type != FileType.UNKNOWN && type != FileType.IMAGE && type != FileType.XLSX && type != FileType.VIDEO) {
+        if (type != FileType.PDF && type != FileType.UNKNOWN && type != FileType.IMAGE && type != FileType.XLSX && type != FileType.VIDEO && type != FileType.AUDIO) {
             isLoadingContent = true
             lifecycleScope.launch {
                 val text = withContext(Dispatchers.IO) { readText(uri) }
@@ -224,6 +224,7 @@ class MainActivity : ComponentActivity() {
             FileType.IMAGE -> com.yohanes.filereader.ui.ImageViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.XLSX -> com.yohanes.filereader.ui.XlsxViewerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
             FileType.VIDEO -> com.yohanes.filereader.VideoPlayerScreen(uri = uri, displayName = currentName, onExit = { currentUri = null })
+            FileType.AUDIO -> AudioPlayerScreen(filePath = uri.path ?: uri.toString())
             FileType.UNKNOWN -> UnsupportedState(currentName)
             else -> {
                 if (isLoadingContent) {
