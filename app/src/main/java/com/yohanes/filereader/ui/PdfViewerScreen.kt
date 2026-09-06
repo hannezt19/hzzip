@@ -50,6 +50,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
+import com.yohanes.filereader.data.PdfPageThumbCache
 import com.yohanes.filereader.data.ReaderSettingsStore
 import com.yohanes.filereader.data.ReaderSettings
 import com.yohanes.filereader.data.BacaWarnaLatar
@@ -108,6 +112,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var modeBacaActive by remember { mutableStateOf(false) }
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
+    var pageGridOpen by remember { mutableStateOf(false) }
     var fullscreenImages by remember { mutableStateOf<List<Bitmap>?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -118,7 +123,10 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     var ttsSentenceIndex by remember { mutableStateOf(0) }
     var ttsCurrentPageIndex by remember { mutableStateOf(0) }
 
-    BackHandler(enabled = fullscreenImages != null) {
+    BackHandler(enabled = pageGridOpen) {
+        pageGridOpen = false
+    }
+    BackHandler(enabled = !pageGridOpen && fullscreenImages != null) {
         fullscreenImages = null
     }
     BackHandler(enabled = fullscreenImages == null && ttsPanelExpanded) {
@@ -156,6 +164,13 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                     Icons.Filled.Star,
                     contentDescription = "Favorit",
                     tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
+                )
+            }
+            IconButton(onClick = { pageGridOpen = true }) {
+                Text(
+                    "\u229E",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = androidx.compose.ui.graphics.Color.LightGray
                 )
             }
         }
@@ -391,6 +406,24 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             )
                         }
                     }
+                }
+
+                if (pageGridOpen) {
+                    PageGridOverlay(
+                        uri = uri,
+                        pageCount = pageCount,
+                        onPageSelected = { pageIndex ->
+                            pageGridOpen = false
+                            scope.launch {
+                                if (readerSettings.navMode == NavigasiMode.SWIPE) {
+                                    pagerState.scrollToPage(pageIndex)
+                                } else {
+                                    scrollListState.scrollToItem(pageIndex)
+                                }
+                            }
+                        },
+                        onClose = { pageGridOpen = false }
+                    )
                 }
 
                 if (fullscreenImages != null) {
@@ -1130,4 +1163,97 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
         contentDescription = "Halaman ${pageIndex + 1}",
         onTap = onTap
     )
+}
+
+@Composable
+private fun PageGridOverlay(
+    uri: Uri,
+    pageCount: Int,
+    onPageSelected: (Int) -> Unit,
+    onClose: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f))
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onClose() })
+            }
+    )
+    Surface(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .fillMaxHeight(0.75f)
+            .navigationBarsPadding(),
+        color = androidx.compose.ui.graphics.Color(0xFF1C1C1E),
+        tonalElevation = 4.dp,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+    ) {
+        LazyHorizontalGrid(
+            rows = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(pageCount) { pageIndex ->
+                ThumbGridItem(
+                    uri = uri,
+                    pageIndex = pageIndex,
+                    onClick = { onPageSelected(pageIndex) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThumbGridItem(uri: Uri, pageIndex: Int, onClick: () -> Unit) {
+    val context = LocalContext.current
+    var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(pageIndex) {
+        val cached = PdfPageThumbCache.get(uri.toString(), pageIndex)
+        if (cached != null) {
+            bitmap = cached
+            return@LaunchedEffect
+        }
+        val session = PdfRenderSessionCache.getOrCreate(context, uri)
+        val rendered = session.renderPage(pageIndex, PdfPageThumbCache.THUMB_SCALE)
+        if (rendered != null) {
+            bitmap = rendered
+            PdfPageThumbCache.put(uri.toString(), pageIndex, rendered)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .width(90.dp)
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                .background(androidx.compose.ui.graphics.Color.DarkGray),
+            contentAlignment = Alignment.Center
+        ) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap!!.asImageBitmap(),
+                    contentDescription = "Halaman ${pageIndex + 1}",
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+            }
+        }
+        Text(
+            "${pageIndex + 1}",
+            style = MaterialTheme.typography.labelSmall,
+            color = androidx.compose.ui.graphics.Color.LightGray
+        )
+    }
 }
