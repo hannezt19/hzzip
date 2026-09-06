@@ -1172,36 +1172,38 @@ private fun PageGridOverlay(
     onPageSelected: (Int) -> Unit,
     onClose: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f))
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { onClose() })
-            }
-    )
-    Surface(
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .fillMaxHeight(0.75f)
-            .navigationBarsPadding(),
-        color = androidx.compose.ui.graphics.Color(0xFF1C1C1E),
-        tonalElevation = 4.dp,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-    ) {
-        LazyHorizontalGrid(
-            rows = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f))
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { onClose() })
+                }
+        )
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.75f)
+                .navigationBarsPadding(),
+            color = androidx.compose.ui.graphics.Color(0xFF1C1C1E),
+            tonalElevation = 4.dp,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
         ) {
-            items(pageCount) { pageIndex ->
-                ThumbGridItem(
-                    uri = uri,
-                    pageIndex = pageIndex,
-                    onClick = { onPageSelected(pageIndex) }
-                )
+            LazyHorizontalGrid(
+                rows = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(pageCount) { pageIndex ->
+                    ThumbGridItem(
+                        uri = uri,
+                        pageIndex = pageIndex,
+                        onClick = { onPageSelected(pageIndex) }
+                    )
+                }
             }
         }
     }
