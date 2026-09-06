@@ -9,6 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,12 +119,19 @@ private fun CategoryHomeScreen(
             }
             else -> {
                 Column(
-                    Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     StorageCard(viewModel.storageInfo)
-                    CATEGORY_LIST.forEach { cat ->
-                        CategoryCard(cat, counts[cat] ?: 0) { onCategoryClick(cat) }
+                    CATEGORY_LIST.chunked(3).forEach { rowItems ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            rowItems.forEach { cat ->
+                                CategoryCircleCard(cat, counts[cat] ?: 0) { onCategoryClick(cat) }
+                            }
+                        }
                     }
                 }
             }
@@ -177,6 +189,57 @@ private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Col
         "Excel" -> MaterialTheme.colorScheme.onPrimaryContainer
         "Favorit" -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+}
+
+@Composable
+private fun categorySolidColor(name: String): androidx.compose.ui.graphics.Color {
+    return when (name) {
+        "PDF" -> androidx.compose.ui.graphics.Color(0xFFE53935)
+        "Excel" -> androidx.compose.ui.graphics.Color(0xFF43A047)
+        "Gambar" -> androidx.compose.ui.graphics.Color(0xFF5C6BC0)
+        "Favorit" -> androidx.compose.ui.graphics.Color(0xFFFFB300)
+        else -> androidx.compose.ui.graphics.Color(0xFF616161)
+    }
+}
+
+private fun categoryIcon(name: String): androidx.compose.ui.graphics.vector.ImageVector {
+    return when (name) {
+        "PDF" -> Icons.Filled.PictureAsPdf
+        "Excel" -> Icons.Filled.TableChart
+        "Gambar" -> androidx.compose.material.icons.filled.Image
+        "Favorit" -> Icons.Filled.Star
+        else -> Icons.Filled.Description
+    }
+}
+
+@Composable
+private fun CategoryCircleCard(name: String, count: Int, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier.clickable(onClick = onClick).padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(categorySolidColor(name)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                categoryIcon(name),
+                contentDescription = name,
+                tint = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(name, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            "$count file",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
