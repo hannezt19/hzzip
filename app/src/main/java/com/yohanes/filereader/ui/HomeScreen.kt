@@ -14,6 +14,11 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Image as ImageIcon
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
