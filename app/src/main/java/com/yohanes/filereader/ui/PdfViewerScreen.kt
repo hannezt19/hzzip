@@ -1062,7 +1062,6 @@ private fun ZoomableImageBox(
 }
 
 @Composable
-@Composable
 private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
     var aspect by remember(pageIndex) { mutableFloatStateOf(0.7071f) }
@@ -1089,6 +1088,7 @@ private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     }
 }
 
+@Composable
 private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
