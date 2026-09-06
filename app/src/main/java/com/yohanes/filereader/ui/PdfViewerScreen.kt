@@ -57,6 +57,10 @@ import com.yohanes.filereader.data.NavigasiMode
 import com.yohanes.filereader.data.TranslateHelper
 import com.yohanes.filereader.data.ModelDownloadState
 import com.yohanes.filereader.data.TtsHelper
+import com.yohanes.filereader.data.PageBitmapCache
+import com.yohanes.filereader.data.PdfRenderSessionCache
+import com.yohanes.filereader.data.PdfThumbnailCache
+import java.io.File
 import kotlinx.coroutines.launch
 
 private const val RENDER_SCALE = 2f
@@ -86,12 +90,10 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     )
 
     DisposableEffect(uri) {
-        val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-        val renderer = pfd?.let { PdfRenderer(it) }
-        pageCount = renderer?.pageCount ?: 0
+        val session = PdfRenderSessionCache.getOrCreate(context, uri)
+        pageCount = session.pageCount
         onDispose {
-            renderer?.close()
-            pfd?.close()
+            PdfRenderSessionCache.closeIfMatches(uri)
         }
     }
 
@@ -1059,7 +1061,35 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(pageIndex) {
-        bitmap = renderSinglePage(context, uri, pageIndex, RENDER_SCALE)
+        if (pageIndex == 0) {
+            val path = uri.path
+            if (path != null) {
+                val lastModified = File(path).lastModified()
+                PdfThumbnailCache.get(context, path, lastModified)?.let { cached ->
+                    bitmap = cached
+                }
+            }
+        }
+
+        val memCached = PageBitmapCache.get(uri.toString(), pageIndex)
+        if (memCached != null) {
+            bitmap = memCached
+            return@LaunchedEffect
+        }
+
+        val session = PdfRenderSessionCache.getOrCreate(context, uri)
+        val rendered = session.renderPage(pageIndex, RENDER_SCALE)
+        if (rendered != null) {
+            bitmap = rendered
+            PageBitmapCache.put(uri.toString(), pageIndex, rendered)
+
+            if (pageIndex == 0) {
+                val path = uri.path
+                if (path != null) {
+                    PdfThumbnailCache.put(context, path, File(path).lastModified(), rendered)
+                }
+            }
+        }
     }
 
     ZoomableImageBox(
@@ -1067,25 +1097,4 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
         contentDescription = "Halaman ${pageIndex + 1}",
         onTap = onTap
     )
-}
-
-private fun renderSinglePage(context: Context, uri: Uri, pageIndex: Int, scale: Float): Bitmap? {
-    var pfd: ParcelFileDescriptor? = null
-    var renderer: PdfRenderer? = null
-    return try {
-        pfd = context.contentResolver.openFileDescriptor(uri, "r")
-        renderer = pfd?.let { PdfRenderer(it) }
-        val page = renderer?.openPage(pageIndex) ?: return null
-        val width = (page.width * scale).toInt().coerceAtLeast(1)
-        val height = (page.height * scale).toInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-        page.close()
-        bitmap
-    } catch (e: Exception) {
-        null
-    } finally {
-        renderer?.close()
-        pfd?.close()
-    }
 }
