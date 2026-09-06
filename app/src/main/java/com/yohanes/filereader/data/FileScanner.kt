@@ -6,7 +6,9 @@ import java.io.File
 object FileScanner {
     private val SUPPORTED_EXTENSIONS = setOf(
         "pdf", "docx", "xlsx", "txt", "json", "html", "js", "css",
-        "jpg", "jpeg", "png", "webp", "gif"
+        "jpg", "jpeg", "png", "webp", "gif",
+        "mp4", "mkv", "webm", "3gp", "avi", "mov",
+        "mp3", "wav", "m4a", "ogg", "flac"
     )
 
     fun scanAll(): List<FileEntity> {
