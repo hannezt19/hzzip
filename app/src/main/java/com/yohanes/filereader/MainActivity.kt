@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yohanes.filereader.data.ThemeStore
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -53,6 +54,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
         ThemeStore.init(this)
+
+        // Status bar dibuat tetap gelap (ikon terang) apapun mode tema app - permintaan user
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
 
         setContent {
             val isDarkMode = ThemeStore.isDarkMode.collectAsState()
