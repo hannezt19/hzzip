@@ -506,6 +506,12 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                 }
                             }
                             TtsPillButton(icon = "\u2699") { ttsPanelExpanded = !ttsPanelExpanded }
+                            TtsPillButton(icon = "\u2715") {
+                                TtsHelper.stop()
+                                ttsPlaying = false
+                                ttsActive = false
+                                ttsPanelExpanded = false
+                            }
                         }
                     }
 
