@@ -302,12 +302,18 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                     onTap = { settingsModalOpen = true }
                                 )
                             } else {
-                                Box(modifier = Modifier.fillMaxWidth().fillParentMaxHeight().clipToBounds()) {
-                                    ZoomablePdfPage(
+                                Column {
+                                    ScrollPdfPage(
                                         uri = uri,
                                         pageIndex = pageIndex,
                                         onTap = { settingsModalOpen = true }
                                     )
+                                    if (pageIndex < pageCount - 1) {
+                                        HorizontalDivider(
+                                            thickness = 1.dp,
+                                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1056,6 +1062,33 @@ private fun ZoomableImageBox(
 }
 
 @Composable
+@Composable
+private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
+    val context = LocalContext.current
+    var aspect by remember(pageIndex) { mutableFloatStateOf(0.7071f) }
+
+    LaunchedEffect(pageIndex) {
+        val session = PdfRenderSessionCache.getOrCreate(context, uri)
+        val size = session.getPageSize(pageIndex)
+        if (size != null && size.second > 0) {
+            aspect = size.first.toFloat() / size.second.toFloat()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspect)
+            .clipToBounds()
+    ) {
+        ZoomablePdfPage(
+            uri = uri,
+            pageIndex = pageIndex,
+            onTap = onTap
+        )
+    }
+}
+
 private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }

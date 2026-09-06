@@ -41,6 +41,21 @@ class PdfRenderSession(context: Context, uri: Uri) {
         }
     }
 
+    suspend fun getPageSize(pageIndex: Int): Pair<Int, Int>? = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val r = renderer ?: return@withLock null
+            if (pageIndex < 0 || pageIndex >= r.pageCount) return@withLock null
+            try {
+                val page = r.openPage(pageIndex)
+                val size = Pair(page.width, page.height)
+                page.close()
+                size
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
     fun close() {
         renderer?.close()
         pfd?.close()
