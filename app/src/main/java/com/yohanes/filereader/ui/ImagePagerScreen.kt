@@ -151,9 +151,17 @@ private fun ZoomableImage(uri: Uri, displayName: String, onZoomChanged: (Float) 
                                         val panChange = event.calculatePan()
                                         val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
                                         zoom = newZoom
-                                        if (newZoom > 1f) {
-                                            val maxOffsetX = (containerSize.width * (newZoom - 1f)) / 2f
-                                            val maxOffsetY = (containerSize.height * (newZoom - 1f)) / 2f
+                                        if (newZoom > 1f && containerSize.width > 0 && containerSize.height > 0) {
+                                            val bmpW = safeBmp.width.toFloat()
+                                            val bmpH = safeBmp.height.toFloat()
+                                            val fitScale = minOf(
+                                                containerSize.width / bmpW,
+                                                containerSize.height / bmpH
+                                            )
+                                            val displayedW = bmpW * fitScale
+                                            val displayedH = bmpH * fitScale
+                                            val maxOffsetX = ((displayedW * newZoom) - containerSize.width).coerceAtLeast(0f) / 2f
+                                            val maxOffsetY = ((displayedH * newZoom) - containerSize.height).coerceAtLeast(0f) / 2f
                                             offsetX = (offsetX + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
                                             offsetY = (offsetY + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
                                         } else {
