@@ -11,6 +11,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yohanes.filereader.data.ThemeStore
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment as ComposeAlignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -64,7 +71,19 @@ class MainActivity : ComponentActivity() {
                 colorScheme = if (isDarkMode.value) darkColorScheme() else lightColorScheme()
             ) {
                 Surface(Modifier.fillMaxSize()) {
-                    AppRoot()
+                    Box(Modifier.fillMaxSize()) {
+                        AppRoot()
+                        // Overlay hitam permanen di area status bar - permintaan user,
+                        // supaya jam/ikon status bar selalu terlihat apapun mode tema app.
+                        // Tidak menghalangi sentuhan karena tidak diberi pointerInput/clickable.
+                        Box(
+                            Modifier
+                                .align(ComposeAlignment.TopCenter)
+                                .fillMaxWidth()
+                                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                                .background(androidx.compose.ui.graphics.Color.Black)
+                        )
+                    }
                 }
             }
         }
