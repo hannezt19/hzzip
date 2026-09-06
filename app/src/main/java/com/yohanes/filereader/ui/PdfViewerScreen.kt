@@ -150,27 +150,31 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 0.dp),
+            Modifier
+                .fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Color(0xFF1C1C1E))
+                .padding(horizontal = 4.dp, vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 displayName,
                 maxLines = 1,
                 style = MaterialTheme.typography.titleSmall,
+                color = androidx.compose.ui.graphics.Color.White,
                 modifier = Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 4.dp)
             )
             IconButton(onClick = { FavoritesStore.toggle(favKey) }) {
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = "Favorit",
-                    tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.Gray
+                    tint = if (isFav) androidx.compose.ui.graphics.Color(0xFFFFC107) else androidx.compose.ui.graphics.Color.White
                 )
             }
             IconButton(onClick = { pageGridOpen = true }) {
                 Text(
                     "\u229E",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = androidx.compose.ui.graphics.Color.LightGray
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = androidx.compose.ui.graphics.Color.White
                 )
             }
         }
