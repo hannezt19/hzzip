@@ -23,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import coil.size.Precision
+import androidx.compose.ui.platform.LocalContext
 import com.yohanes.filereader.data.FileEntity
 import java.io.File
 import java.time.Instant
@@ -85,11 +88,22 @@ private fun ImageThumbnail(file: FileEntity, onClick: () -> Unit) {
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        AsyncImage(
-            model = File(file.path),
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(File(file.path))
+                .crossfade(true)
+                .precision(Precision.INEXACT)
+                .build(),
             contentDescription = file.name,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            loading = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                )
+            }
         )
     }
 }
