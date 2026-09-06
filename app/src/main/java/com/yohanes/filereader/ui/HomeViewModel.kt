@@ -9,6 +9,8 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.insertSeparators
+import androidx.paging.map
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
 import com.yohanes.filereader.data.FavoritesStore
@@ -27,6 +29,19 @@ import kotlinx.coroutines.withContext
 enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
 val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Video", "Audio", "Teks/Kode", "Favorit")
+
+sealed class GalleryItem {
+    data class Header(val label: String) : GalleryItem()
+    data class Photo(val file: FileEntity) : GalleryItem()
+}
+
+private fun monthLabelOf(epochMillis: Long): String {
+    val date = java.time.Instant.ofEpochMilli(epochMillis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+    return date.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale("id", "ID")))
+        .replaceFirstChar { it.uppercase() }
+}
 
 data class StorageInfo(val totalBytes: Long, val usedBytes: Long, val freeBytes: Long)
 
@@ -117,11 +132,22 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val imagesPaged: Flow<PagingData<FileEntity>> = Pager(
+    val imagesPaged: Flow<PagingData<GalleryItem>> = Pager(
         config = PagingConfig(pageSize = 60, prefetchDistance = 20, enablePlaceholders = false)
     ) {
         dao.getImagesPaged()
-    }.flow.cachedIn(viewModelScope)
+    }.flow
+        .map { pagingData ->
+            pagingData
+                .map { GalleryItem.Photo(it) as GalleryItem }
+                .insertSeparators { before, after ->
+                    val afterPhoto = after as? GalleryItem.Photo ?: return@insertSeparators null
+                    val afterLabel = monthLabelOf(afterPhoto.file.lastModified)
+                    val beforeLabel = (before as? GalleryItem.Photo)?.let { monthLabelOf(it.file.lastModified) }
+                    if (beforeLabel != afterLabel) GalleryItem.Header(afterLabel) else null
+                }
+        }
+        .cachedIn(viewModelScope)
 
     private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
 

@@ -5,13 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,16 +37,18 @@ import java.io.File
 
 @Composable
 fun ImageGalleryScreen(
-    imagesFlow: Flow<PagingData<FileEntity>>,
+    imagesFlow: Flow<PagingData<GalleryItem>>,
     onFileClick: (FileEntity) -> Unit
 ) {
     val pagingItems = imagesFlow.collectAsLazyPagingItems()
     var pagerIndex by remember { mutableStateOf<Int?>(null) }
 
     if (pagerIndex != null) {
-        val snapshot = pagingItems.itemSnapshotList.items
+        val photoList = pagingItems.itemSnapshotList.items
+            .filterIsInstance<GalleryItem.Photo>()
+            .map { it.file }
         ImagePagerScreen(
-            files = snapshot,
+            files = photoList,
             initialIndex = pagerIndex!!,
             onExit = { pagerIndex = null }
         )
@@ -57,14 +62,42 @@ fun ImageGalleryScreen(
     ) {
         items(
             count = pagingItems.itemCount,
-            key = pagingItems.itemKey { it.path }
+            key = pagingItems.itemKey { item ->
+                when (item) {
+                    is GalleryItem.Header -> "header_${item.label}"
+                    is GalleryItem.Photo -> item.file.path
+                }
+            },
+            span = { index ->
+                when (pagingItems.peek(index)) {
+                    is GalleryItem.Header -> GridItemSpan(maxLineSpan)
+                    else -> GridItemSpan(1)
+                }
+            }
         ) { index ->
-            val file = pagingItems[index]
-            if (file != null) {
-                ImageThumbnail(
-                    file = file,
-                    onClick = { pagerIndex = index }
-                )
+            when (val item = pagingItems[index]) {
+                is GalleryItem.Header -> {
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                    )
+                }
+                is GalleryItem.Photo -> {
+                    ImageThumbnail(
+                        file = item.file,
+                        onClick = {
+                            val photoList = pagingItems.itemSnapshotList.items
+                                .filterIsInstance<GalleryItem.Photo>()
+                                .map { it.file }
+                            val clickedIndex = photoList.indexOfFirst { it.path == item.file.path }
+                            if (clickedIndex >= 0) pagerIndex = clickedIndex
+                        }
+                    )
+                }
+                null -> {}
             }
         }
     }
