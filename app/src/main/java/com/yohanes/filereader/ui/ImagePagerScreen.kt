@@ -8,6 +8,10 @@ import kotlinx.coroutines.withContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -35,6 +39,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.yohanes.filereader.data.FavoritesStore
@@ -108,6 +114,7 @@ private fun ZoomableImage(uri: Uri, displayName: String, onZoomChanged: (Float) 
     var zoom by remember(uri) { mutableFloatStateOf(1f) }
     var offsetX by remember(uri) { mutableFloatStateOf(0f) }
     var offsetY by remember(uri) { mutableFloatStateOf(0f) }
+    var containerSize by remember(uri) { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(zoom) { onZoomChanged(zoom) }
 
@@ -122,6 +129,7 @@ private fun ZoomableImage(uri: Uri, displayName: String, onZoomChanged: (Float) 
                     contentDescription = displayName,
                     modifier = Modifier
                         .fillMaxSize()
+                        .onSizeChanged { containerSize = it }
                         .graphicsLayer(
                             scaleX = zoom,
                             scaleY = zoom,
@@ -129,17 +137,32 @@ private fun ZoomableImage(uri: Uri, displayName: String, onZoomChanged: (Float) 
                             translationY = offsetY
                         )
                         .pointerInput(uri) {
-                            detectTransformGestures { _, panChange, zoomChange, _ ->
-                                val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
-                                zoom = newZoom
-                                if (newZoom > 1f) {
-                                    val maxOffset = (newZoom - 1f) * 800f
-                                    offsetX = (offsetX + panChange.x).coerceIn(-maxOffset, maxOffset)
-                                    offsetY = (offsetY + panChange.y).coerceIn(-maxOffset, maxOffset)
-                                } else {
-                                    offsetX = 0f
-                                    offsetY = 0f
-                                }
+                            // Hanya tangkap gesture kalau pinch 2 jari (mulai zoom) atau
+                            // gambar sudah dalam kondisi zoom (untuk pan). Kalau cuma
+                            // 1 jari geser & belum zoom, JANGAN konsumsi - biarkan
+                            // HorizontalPager di atasnya yang proses swipe ganti foto.
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val isMultiTouch = event.changes.size > 1
+                                    if (isMultiTouch || zoom > 1f) {
+                                        val zoomChange = event.calculateZoom()
+                                        val panChange = event.calculatePan()
+                                        val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
+                                        zoom = newZoom
+                                        if (newZoom > 1f) {
+                                            val maxOffsetX = (containerSize.width * (newZoom - 1f)) / 2f
+                                            val maxOffsetY = (containerSize.height * (newZoom - 1f)) / 2f
+                                            offsetX = (offsetX + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                            offsetY = (offsetY + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                        } else {
+                                            offsetX = 0f
+                                            offsetY = 0f
+                                        }
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                } while (event.changes.any { it.pressed })
                             }
                         }
                         .pointerInput(uri) {
