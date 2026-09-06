@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Image as ImageIcon
@@ -34,24 +35,29 @@ fun HomeScreen(
     onPickFileManually: () -> Unit
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsState()
+    var showAnalisis by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = selectedCategory != null) {
+    BackHandler(enabled = showAnalisis) {
+        showAnalisis = false
+    }
+    BackHandler(enabled = !showAnalisis && selectedCategory != null) {
         viewModel.onCategorySelected(null)
     }
 
-    if (selectedCategory != null) {
-        CategoryDetailScreen(
+    when {
+        showAnalisis -> AnalisisScreen(onBack = { showAnalisis = false })
+        selectedCategory != null -> CategoryDetailScreen(
             viewModel = viewModel,
             category = selectedCategory!!,
             onBack = { viewModel.onCategorySelected(null) },
             onFileClick = onFileClick
         )
-    } else {
-        CategoryHomeScreen(
+        else -> CategoryHomeScreen(
             viewModel = viewModel,
             onCategoryClick = { viewModel.onCategorySelected(it) },
             onFileClick = onFileClick,
-            onPickFileManually = onPickFileManually
+            onPickFileManually = onPickFileManually,
+            onAnalisisClick = { showAnalisis = true }
         )
     }
 }
@@ -61,7 +67,8 @@ private fun CategoryHomeScreen(
     viewModel: HomeViewModel,
     onCategoryClick: (String) -> Unit,
     onFileClick: (FileEntity) -> Unit,
-    onPickFileManually: () -> Unit
+    onPickFileManually: () -> Unit,
+    onAnalisisClick: () -> Unit
 ) {
     val query by viewModel.searchQuery.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -128,7 +135,13 @@ private fun CategoryHomeScreen(
                     Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    StorageCard(viewModel.storageInfo)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        StorageCard(viewModel.storageInfo, modifier = Modifier.weight(1f))
+                        AnalisisCard(modifier = Modifier.weight(1f), onClick = onAnalisisClick)
+                    }
                     CATEGORY_LIST.chunked(3).forEach { rowItems ->
                         Row(
                             Modifier.fillMaxWidth(),
@@ -146,12 +159,12 @@ private fun CategoryHomeScreen(
 }
 
 @Composable
-private fun StorageCard(info: StorageInfo) {
+private fun StorageCard(info: StorageInfo, modifier: Modifier = Modifier) {
     val usedFraction = if (info.totalBytes > 0) info.usedBytes.toFloat() / info.totalBytes.toFloat() else 0f
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -195,6 +208,67 @@ private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Col
         "Excel" -> MaterialTheme.colorScheme.onPrimaryContainer
         "Favorit" -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+}
+
+private val ANALISIS_MENU = listOf(
+    "Semua Partisi",
+    "File Besar",
+    "Berkas Terbaru",
+    "Folder Kosong",
+    "File Redundan",
+    "File Duplikat",
+    "Keranjang Sampah"
+)
+
+@Composable
+private fun AnalisisCard(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Icon(
+                Icons.Filled.Search,
+                contentDescription = "Analisis",
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("Analisis", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "File lain untuk dibersihkan",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnalisisScreen(onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(4.dp, 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+            }
+            Text("Analisis", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        }
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(ANALISIS_MENU) { menu ->
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp, 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(menu, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                }
+                Divider()
+            }
+        }
     }
 }
 
