@@ -33,4 +33,7 @@ interface FileDao {
 
     @Query("SELECT * FROM files WHERE extension IN ('jpg','jpeg','png','webp','gif') ORDER BY lastModified DESC")
     fun getImagesPaged(): PagingSource<Int, FileEntity>
+
+    @Query("SELECT * FROM files WHERE extension IN ('mp4','mkv','webm','3gp','avi','mov') ORDER BY lastModified DESC")
+    fun getVideos(): Flow<List<FileEntity>>
 }
