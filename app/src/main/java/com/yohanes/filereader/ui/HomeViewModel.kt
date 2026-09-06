@@ -108,9 +108,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
+
     init {
         FavoritesStore.init(application)
-        refreshScan()
+        val lastScan = scanPrefs.getLong(KEY_LAST_SCAN, 0L)
+        val elapsed = System.currentTimeMillis() - lastScan
+        if (elapsed > SCAN_INTERVAL_MS) {
+            refreshScan()
+        }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -133,10 +139,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 FileScanner.scanAll()
             }
             withContext(Dispatchers.IO) {
-                dao.clearAll()
-                dao.insertAll(results)
+                dao.replaceAll(results)
             }
+            scanPrefs.edit().putLong(KEY_LAST_SCAN, System.currentTimeMillis()).apply()
             _isScanning.value = false
         }
+    }
+
+    companion object {
+        private const val KEY_LAST_SCAN = "last_scan_timestamp"
+        private const val SCAN_INTERVAL_MS = 10 * 60 * 1000L
     }
 }

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,6 +14,12 @@ interface FileDao {
 
     @Query("DELETE FROM files")
     suspend fun clearAll()
+
+    @Transaction
+    suspend fun replaceAll(files: List<FileEntity>) {
+        clearAll()
+        insertAll(files)
+    }
 
     @Query("SELECT * FROM files ORDER BY lastModified DESC")
     fun getAll(): Flow<List<FileEntity>>
