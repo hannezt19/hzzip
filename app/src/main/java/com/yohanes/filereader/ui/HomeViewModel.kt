@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 
 enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
-val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Teks/Kode", "Favorit")
+val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Video", "Audio", "Teks/Kode", "Favorit")
 
 data class StorageInfo(val totalBytes: Long, val usedBytes: Long, val freeBytes: Long)
 
@@ -46,6 +46,8 @@ fun categoryOf(extension: String): String {
         "pdf" -> "PDF"
         "jpg", "jpeg", "png", "webp", "gif" -> "Gambar"
         "xlsx" -> "Excel"
+        "mp4", "mkv", "webm", "3gp", "avi", "mov" -> "Video"
+        "mp3", "wav", "m4a", "ogg", "flac", "aac" -> "Audio"
         else -> "Teks/Kode"
     }
 }
@@ -59,6 +61,8 @@ fun categoryEmoji(category: String): String {
         "PDF" -> "\uD83D\uDCC4"
         "Gambar" -> "\uD83D\uDDBC\uFE0F"
         "Excel" -> "\uD83D\uDCCA"
+        "Video" -> "\uD83C\uDFA5"
+        "Audio" -> "\uD83C\uDFB5"
         "Favorit" -> "\u2B50"
         else -> "\uD83D\uDCDD"
     }

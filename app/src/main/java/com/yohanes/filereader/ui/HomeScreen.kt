@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Search
@@ -398,6 +400,8 @@ private fun categorySolidColor(name: String): androidx.compose.ui.graphics.Color
         "PDF" -> androidx.compose.ui.graphics.Color(0xFFE53935)
         "Excel" -> androidx.compose.ui.graphics.Color(0xFF43A047)
         "Gambar" -> androidx.compose.ui.graphics.Color(0xFF5C6BC0)
+        "Video" -> androidx.compose.ui.graphics.Color(0xFFFB8C00)
+        "Audio" -> androidx.compose.ui.graphics.Color(0xFFD81B60)
         "Favorit" -> androidx.compose.ui.graphics.Color(0xFFFFB300)
         else -> androidx.compose.ui.graphics.Color(0xFF616161)
     }
@@ -408,6 +412,8 @@ private fun categoryIcon(name: String): androidx.compose.ui.graphics.vector.Imag
         "PDF" -> Icons.Filled.PictureAsPdf
         "Excel" -> Icons.Filled.TableChart
         "Gambar" -> Icons.Filled.ImageIcon
+        "Video" -> Icons.Filled.Movie
+        "Audio" -> Icons.Filled.MusicNote
         "Favorit" -> Icons.Filled.Star
         else -> Icons.Filled.Description
     }
