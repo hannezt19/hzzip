@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
@@ -44,7 +45,13 @@ fun HomeScreen(
         viewModel.onCategorySelected(null)
     }
 
+    var showDirektori by remember { mutableStateOf(false) }
+
     when {
+        showDirektori -> DirektoriScreen(
+            onFileClick = onFileClick,
+            onBack = { showDirektori = false }
+        )
         showAnalisis -> AnalisisScreen(onBack = { showAnalisis = false })
         selectedCategory != null -> CategoryDetailScreen(
             viewModel = viewModel,
@@ -57,7 +64,8 @@ fun HomeScreen(
             onCategoryClick = { viewModel.onCategorySelected(it) },
             onFileClick = onFileClick,
             onPickFileManually = onPickFileManually,
-            onAnalisisClick = { showAnalisis = true }
+            onAnalisisClick = { showAnalisis = true },
+            onDirektoriClick = { showDirektori = true }
         )
     }
 }
@@ -68,7 +76,8 @@ private fun CategoryHomeScreen(
     onCategoryClick: (String) -> Unit,
     onFileClick: (FileEntity) -> Unit,
     onPickFileManually: () -> Unit,
-    onAnalisisClick: () -> Unit
+    onAnalisisClick: () -> Unit,
+    onDirektoriClick: () -> Unit
 ) {
     val query by viewModel.searchQuery.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -139,7 +148,7 @@ private fun CategoryHomeScreen(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        StorageCard(viewModel.storageInfo, modifier = Modifier.weight(1f))
+                        StorageCard(viewModel.storageInfo, modifier = Modifier.weight(1f), onClick = onDirektoriClick)
                         AnalisisCard(modifier = Modifier.weight(1f), onClick = onAnalisisClick)
                     }
                     CATEGORY_LIST.chunked(3).forEach { rowItems ->
@@ -159,9 +168,10 @@ private fun CategoryHomeScreen(
 }
 
 @Composable
-private fun StorageCard(info: StorageInfo, modifier: Modifier = Modifier) {
+private fun StorageCard(info: StorageInfo, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     val usedFraction = if (info.totalBytes > 0) info.usedBytes.toFloat() / info.totalBytes.toFloat() else 0f
     Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = modifier.fillMaxWidth()
@@ -208,6 +218,116 @@ private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Col
         "Excel" -> MaterialTheme.colorScheme.onPrimaryContainer
         "Favorit" -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+}
+
+@Composable
+private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onBack: () -> Unit) {
+    val rootPath = android.os.Environment.getExternalStorageDirectory().path
+    var currentDir by remember { mutableStateOf(java.io.File(rootPath)) }
+
+    BackHandler(enabled = true) {
+        val parent = currentDir.parentFile
+        if (currentDir.path != rootPath && parent != null) {
+            currentDir = parent
+        } else {
+            onBack()
+        }
+    }
+
+    val entries = remember(currentDir) {
+        (currentDir.listFiles()?.toList() ?: emptyList())
+            .sortedWith(compareByDescending<java.io.File> { it.isDirectory }.thenBy { it.name.lowercase() })
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(4.dp, 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                val parent = currentDir.parentFile
+                if (currentDir.path != rootPath && parent != null) currentDir = parent else onBack()
+            }) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+            }
+            Text("Direktori", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        }
+
+        val relative = currentDir.path.removePrefix(rootPath).trim('/')
+        val segments = if (relative.isBlank()) listOf("Internal") else listOf("Internal") + relative.split("/")
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(16.dp, 0.dp, 16.dp, 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            segments.forEachIndexed { index, seg ->
+                Text(
+                    seg,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable {
+                        val target = if (index == 0) rootPath
+                            else rootPath + "/" + segments.drop(1).take(index).joinToString("/")
+                        currentDir = java.io.File(target)
+                    }
+                )
+                if (index != segments.lastIndex) {
+                    Text(" > ", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+
+        if (entries.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Folder kosong")
+            }
+        } else {
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(entries) { entry ->
+                    if (entry.isDirectory) {
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable { currentDir = entry }
+                                .padding(16.dp, 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("\uD83D\uDCC1", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(entry.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    "${entry.listFiles()?.size ?: 0} item",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        FileRow(
+                            file = FileEntity(
+                                path = entry.absolutePath,
+                                name = entry.name,
+                                extension = entry.extension.lowercase(),
+                                sizeBytes = entry.length(),
+                                lastModified = entry.lastModified()
+                            ),
+                            onClick = {
+                                onFileClick(
+                                    FileEntity(
+                                        path = entry.absolutePath,
+                                        name = entry.name,
+                                        extension = entry.extension.lowercase(),
+                                        sizeBytes = entry.length(),
+                                        lastModified = entry.lastModified()
+                                    )
+                                )
+                            }
+                        )
+                    }
+                    Divider()
+                }
+            }
+        }
     }
 }
 
