@@ -3,6 +3,8 @@ package com.yohanes.filereader.ui
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -98,7 +100,7 @@ private fun ZoomableImage(uri: Uri, displayName: String, onZoomChanged: (Float) 
     var loadFailed by remember(uri) { mutableStateOf(false) }
 
     LaunchedEffect(uri) {
-        bmp = loadBitmapForPager(context, uri)
+        bmp = withContext(Dispatchers.IO) { loadBitmapForPager(context, uri) }
         if (bmp == null) loadFailed = true
     }
 
@@ -160,8 +162,28 @@ private fun ZoomableImage(uri: Uri, displayName: String, onZoomChanged: (Float) 
 
 private fun loadBitmapForPager(context: Context, uri: Uri): android.graphics.Bitmap? {
     return try {
+        val metrics = context.resources.displayMetrics
+        // Batasi maksimal ~2x ukuran layar - cukup tajam untuk zoom sampai 5x
+        // tanpa decode resolusi asli yang bisa berukuran raksasa
+        val maxDimension = maxOf(metrics.widthPixels, metrics.heightPixels) * 2
+
+        val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { stream ->
-            BitmapFactory.decodeStream(stream)
+            BitmapFactory.decodeStream(stream, null, boundsOptions)
+        }
+
+        var inSampleSize = 1
+        while (boundsOptions.outWidth / inSampleSize >= maxDimension ||
+            boundsOptions.outHeight / inSampleSize >= maxDimension
+        ) {
+            inSampleSize *= 2
+        }
+
+        val decodeOptions = BitmapFactory.Options().apply {
+            this.inSampleSize = inSampleSize
+        }
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, decodeOptions)
         }
     } catch (e: Exception) {
         null
