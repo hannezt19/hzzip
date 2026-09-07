@@ -49,7 +49,7 @@ import java.io.File
 
 private val PlayerBg = Color(0xFF2A2A2E)
 private val PlayerSurface = Color(0xFF303035)
-private val PlayerAccent = Color(0xFF4DD0E1)
+private val PlayerAccent = Color(0xFFD6D6D6)
 
 /**
  * Efek "timbul lembut" ala neumorphism, versi sederhana yang aman dibangun
@@ -199,7 +199,7 @@ fun AudioPlayerScreen(filePath: String) {
 
         Box(
             Modifier
-                .size(220.dp)
+                .size(280.dp)
                 .softRaised(CircleShape, PlayerSurface),
             contentAlignment = Alignment.Center
         ) {
@@ -238,7 +238,7 @@ fun AudioPlayerScreen(filePath: String) {
             )
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.weight(1f))
 
         val safeDuration = duration.coerceAtLeast(1L)
         Slider(
@@ -306,6 +306,6 @@ fun AudioPlayerScreen(filePath: String) {
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(24.dp))
     }
 }
