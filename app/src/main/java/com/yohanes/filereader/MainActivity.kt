@@ -182,7 +182,7 @@ class MainActivity : ComponentActivity() {
                 drawerState = drawerState,
                 gesturesEnabled = drawerState.isOpen,
                 drawerContent = {
-                    ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.4f)) {
+                    ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.75f)) {
                         com.yohanes.filereader.ui.AppDrawerContent(
                             isDarkMode = ThemeStore.isDarkMode.collectAsState().value,
                             onToggleDarkMode = { ThemeStore.toggle() },
@@ -211,26 +211,33 @@ class MainActivity : ComponentActivity() {
                 }
             ) {
             Box(Modifier.fillMaxSize()) {
-                when (selectedTab) {
-                    com.yohanes.filereader.ui.AppTab.HOME -> HomeScreen(
-                        viewModel = homeViewModel,
-                        onFileClick = { file ->
-                            loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
-                        },
-                        onPickFileManually = {
-                            openDocumentLauncher.launch(
-                                arrayOf(
-                                    "application/pdf", "application/json", "text/html",
-                                    "text/javascript", "application/javascript", "text/plain"
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(top = 48.dp)
+                ) {
+                    when (selectedTab) {
+                        com.yohanes.filereader.ui.AppTab.HOME -> HomeScreen(
+                            viewModel = homeViewModel,
+                            onFileClick = { file ->
+                                loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
+                            },
+                            onPickFileManually = {
+                                openDocumentLauncher.launch(
+                                    arrayOf(
+                                        "application/pdf", "application/json", "text/html",
+                                        "text/javascript", "application/javascript", "text/plain"
+                                    )
                                 )
-                            )
-                        }
-                    )
-                    com.yohanes.filereader.ui.AppTab.RECENT -> com.yohanes.filereader.ui.RecentScreen(
-                        onFileClick = { file ->
-                            loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
-                        }
-                    )
+                            }
+                        )
+                        com.yohanes.filereader.ui.AppTab.RECENT -> com.yohanes.filereader.ui.RecentScreen(
+                            onFileClick = { file ->
+                                loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
+                            }
+                        )
+                    }
                 }
                 IconButton(
                     onClick = { drawerScope.launch { drawerState.open() } },
