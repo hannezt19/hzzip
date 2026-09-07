@@ -176,6 +176,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _sortOption.value = option
     }
 
+    private val _showDirektori = MutableStateFlow(false)
+    val showDirektori: StateFlow<Boolean> = _showDirektori
+    fun openDirektori() { _showDirektori.value = true }
+    fun closeDirektori() { _showDirektori.value = false }
+
     fun refreshScan() {
         viewModelScope.launch {
             _isScanning.value = true

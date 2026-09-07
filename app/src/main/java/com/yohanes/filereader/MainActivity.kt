@@ -173,17 +173,49 @@ class MainActivity : ComponentActivity() {
         if (uri == null) {
             var selectedTab by remember { mutableStateOf(com.yohanes.filereader.ui.AppTab.HOME) }
             val homeViewModel: HomeViewModel = viewModel()
-            androidx.compose.material3.Scaffold(
-                bottomBar = {
-                    com.yohanes.filereader.ui.BottomNavBar(
-                        selectedTab = selectedTab,
-                        onTabSelected = { tab ->
-                            if (tab == com.yohanes.filereader.ui.AppTab.HOME &&
-                                selectedTab == com.yohanes.filereader.ui.AppTab.HOME
-                            ) {
+            val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+            val drawerScope = rememberCoroutineScope()
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ModalDrawerSheet {
+                        com.yohanes.filereader.ui.AppDrawerContent(
+                            onBeranda = {
                                 homeViewModel.onCategorySelected(null)
+                                homeViewModel.closeDirektori()
+                                selectedTab = com.yohanes.filereader.ui.AppTab.HOME
+                                drawerScope.launch { drawerState.close() }
+                            },
+                            onTerakhir = {
+                                selectedTab = com.yohanes.filereader.ui.AppTab.RECENT
+                                drawerScope.launch { drawerState.close() }
+                            },
+                            onDirektori = {
+                                homeViewModel.openDirektori()
+                                selectedTab = com.yohanes.filereader.ui.AppTab.HOME
+                                drawerScope.launch { drawerState.close() }
+                            },
+                            onFavorit = {
+                                homeViewModel.onCategorySelected("Favorit")
+                                selectedTab = com.yohanes.filereader.ui.AppTab.HOME
+                                drawerScope.launch { drawerState.close() }
+                            },
+                            onPengaturan = {
+                                selectedTab = com.yohanes.filereader.ui.AppTab.SETTINGS
+                                drawerScope.launch { drawerState.close() }
                             }
-                            selectedTab = tab
+                        )
+                    }
+                }
+            ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("File Reader") },
+                        navigationIcon = {
+                            IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
+                                Icon(androidx.compose.material.icons.Icons.Filled.Menu, contentDescription = "Menu")
+                            }
                         }
                     )
                 }
@@ -215,6 +247,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
             }
             return
         }

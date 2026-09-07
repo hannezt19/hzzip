@@ -47,12 +47,12 @@ fun HomeScreen(
         viewModel.onCategorySelected(null)
     }
 
-    var showDirektori by remember { mutableStateOf(false) }
+    val showDirektori by viewModel.showDirektori.collectAsState()
 
     when {
         showDirektori -> DirektoriScreen(
             onFileClick = onFileClick,
-            onBack = { showDirektori = false }
+            onBack = { viewModel.closeDirektori() }
         )
         showAnalisis -> AnalisisScreen(onBack = { showAnalisis = false })
         selectedCategory != null -> CategoryDetailScreen(
@@ -67,7 +67,7 @@ fun HomeScreen(
             onFileClick = onFileClick,
             onPickFileManually = onPickFileManually,
             onAnalisisClick = { showAnalisis = true },
-            onDirektoriClick = { showDirektori = true }
+            onDirektoriClick = { viewModel.openDirektori() }
         )
     }
 }
@@ -479,9 +479,7 @@ private fun CategoryDetailScreen(
     onBack: () -> Unit,
     onFileClick: (FileEntity) -> Unit
 ) {
-    val query by viewModel.searchQuery.collectAsState()
     val files by viewModel.files.collectAsState()
-    var showSortMenu by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -492,40 +490,6 @@ private fun CategoryDetailScreen(
                 Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
             }
             Text(category, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        }
-
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp, 4.dp, 16.dp, 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = viewModel::onSearchQueryChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Cari di $category...") },
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Box {
-                TextButton(onClick = { showSortMenu = true }) {
-                    Text("Urutkan")
-                }
-                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                    DropdownMenuItem(text = { Text("A-Z") }, onClick = {
-                        viewModel.onSortOptionChange(SortOption.NAME_AZ)
-                        showSortMenu = false
-                    })
-                    DropdownMenuItem(text = { Text("Terbaru - Terlama") }, onClick = {
-                        viewModel.onSortOptionChange(SortOption.DATE_NEWEST)
-                        showSortMenu = false
-                    })
-                    DropdownMenuItem(text = { Text("Terbesar - Terkecil") }, onClick = {
-                        viewModel.onSortOptionChange(SortOption.SIZE_LARGEST)
-                        showSortMenu = false
-                    })
-                }
-            }
         }
 
         if (files.isEmpty()) {
