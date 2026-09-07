@@ -305,7 +305,7 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                                     val now = event.eventTime
                                     if (now - lastSeekTapTime < 300) {
                                         val direction = if (downX < viewWidth / 2f) -1 else 1
-                                        if (direction == seekBurstDirection && now - lastSeekTapTime < 1200) {
+                                        if (direction == seekBurstDirection && now - lastSeekTapTime < 3000) {
                                             seekBurstCount += 1
                                         } else {
                                             seekBurstDirection = direction
@@ -317,8 +317,8 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                                             .coerceIn(0L, durationMsState.value)
                                         exoPlayer.seekTo(target)
                                         positionMs = target
-                                        val arrow = if (direction < 0) "⏪ -" else "⏩ +"
-                                        gestureFeedbackText = arrow + (seekBurstCount * 10) + " detik"
+                                        val sign = if (direction < 0) "-" else "+"
+                                        gestureFeedbackText = sign + (seekBurstCount * 10)
                                         feedbackVersion += 1
                                     }
                                     lastSeekTapTime = now
@@ -443,16 +443,14 @@ private fun CustomSeekBar(
     val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        if (isDragging) {
-            Text(
-                text = formatTime(positionMs) + " / " + formatTime(durationMs),
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 6.dp)
-            )
-        }
+        Text(
+            text = formatTime(positionMs) + " / " + formatTime(durationMs),
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(bottom = 6.dp, end = 4.dp)
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
