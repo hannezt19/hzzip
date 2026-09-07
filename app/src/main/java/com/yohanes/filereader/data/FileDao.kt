@@ -22,6 +22,26 @@ interface FileDao {
         insertAll(files)
     }
 
+    @Query("SELECT * FROM files")
+    suspend fun getAllOnce(): List<FileEntity>
+
+    @Query("DELETE FROM files WHERE path IN (:paths)")
+    suspend fun deleteByPaths(paths: List<String>)
+
+    @Transaction
+    suspend fun syncAll(newFiles: List<FileEntity>) {
+        val existing = getAllOnce().associateBy { it.path }
+        val newMap = newFiles.associateBy { it.path }
+
+        // hanya file yang benar-benar baru atau berubah (beda size/lastModified) yang ditulis ulang
+        val toUpsert = newFiles.filter { nf -> existing[nf.path] != nf }
+        // file yang sudah tidak ada lagi di storage dihapus dari tabel
+        val toDelete = existing.keys - newMap.keys
+
+        if (toUpsert.isNotEmpty()) insertAll(toUpsert)
+        if (toDelete.isNotEmpty()) deleteByPaths(toDelete.toList())
+    }
+
     @Query("SELECT * FROM files ORDER BY lastModified DESC")
     fun getAll(): Flow<List<FileEntity>>
 

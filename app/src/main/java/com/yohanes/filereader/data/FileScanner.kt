@@ -8,7 +8,7 @@ object FileScanner {
         "pdf", "docx", "xlsx", "txt", "json", "html", "js", "css",
         "jpg", "jpeg", "png", "webp", "gif",
         "mp4", "mkv", "webm", "3gp", "avi", "mov",
-        "mp3", "wav", "m4a", "ogg", "flac"
+        "mp3", "wav", "m4a", "ogg", "flac", "aac"
     )
 
     fun scanAll(): List<FileEntity> {
