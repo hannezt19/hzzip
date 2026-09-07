@@ -197,6 +197,7 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         AndroidView(
@@ -412,7 +413,8 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 28.dp, top = 10.dp)
         ) {
             CustomSeekBar(
                 positionMs = positionMs,
