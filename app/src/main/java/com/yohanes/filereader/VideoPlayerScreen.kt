@@ -5,15 +5,17 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,16 +23,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +43,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.collectAsState
@@ -57,20 +57,19 @@ import androidx.media3.ui.PlayerView
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
 import java.io.File
+import java.util.Locale
 import kotlinx.coroutines.delay
 
-private enum class VideoSortMode { TERBARU, FOLDER }
-
 /**
- * Pemutar video pakai ExoPlayer/Media3. Kontrol dibuat custom (bukan bawaan PlayerView)
- * supaya tampilan minimal: hanya play/pause + seek bar.
+ * Pemutar video pakai ExoPlayer/Media3. Kontrol custom minimal: play/pause + seek bar tebal ala Google.
  *
  * Gesture:
- * - Tap sekali -> tampil/sembunyikan kontrol & chip Terbaru/Folder
- * - Swipe cepat lalu lepas (fling) -> ganti video (ikuti mode Terbaru/Folder)
+ * - Tap sekali -> tampil/sembunyikan kontrol
+ * - Swipe cepat lalu lepas (fling) -> ganti video (urutan terbaru)
  * - Tahan sebentar lalu geser dikit (lambat) -> percepat 2x selama ditahan
  *
- * Fullscreen mengikuti rotasi sistem (tidak ada tombol fullscreen manual).
+ * Fullscreen mengikuti rotasi sistem. Toggle Terbaru/Folder sengaja dihapus dari sini,
+ * rencananya dipindah ke halaman grid Video (kerja bareng hz11) supaya player tetap bersih.
  * Belum ada: playlist manual/autoplay, kontrol notification, subtitle - menunggu keputusan user.
  */
 @Composable
@@ -90,7 +89,6 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     var controlsVisible by remember { mutableStateOf(true) }
     var currentPath by remember { mutableStateOf(uri.path ?: uri.toString()) }
     var currentName by remember { mutableStateOf(displayName) }
-    var mode by remember { mutableStateOf(VideoSortMode.TERBARU) }
     var positionMs by remember { mutableStateOf(0L) }
     var durationMs by remember { mutableStateOf(1L) }
     var isDraggingSlider by remember { mutableStateOf(false) }
@@ -98,29 +96,17 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     val dao = remember { AppDatabase.getInstance(context).fileDao() }
     val allVideos by dao.getVideos().collectAsState(initial = emptyList<FileEntity>())
 
-    val displayList by remember(allVideos, mode, currentPath) {
+    val currentIndex by remember(allVideos, currentPath) {
         derivedStateOf {
-            when (mode) {
-                VideoSortMode.TERBARU -> allVideos
-                VideoSortMode.FOLDER -> {
-                    val folder = File(currentPath).parent
-                    allVideos.filter { File(it.path).parent == folder }
-                }
-            }
-        }
-    }
-
-    val currentIndex by remember(displayList, currentPath) {
-        derivedStateOf {
-            val idx = displayList.indexOfFirst { it.path == currentPath }
+            val idx = allVideos.indexOfFirst { it.path == currentPath }
             if (idx == -1) 0 else idx
         }
     }
 
     fun playAt(index: Int) {
-        if (displayList.isEmpty()) return
-        val safe = index.coerceIn(0, displayList.size - 1)
-        val entity = displayList[safe]
+        if (allVideos.isEmpty()) return
+        val safe = index.coerceIn(0, allVideos.size - 1)
+        val entity = allVideos[safe]
         if (entity.path == currentPath) return
         currentPath = entity.path
         currentName = entity.name
@@ -258,34 +244,17 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopStart)
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = currentName,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Spacer(modifier = Modifier.padding(4.dp))
-                Row {
-                    SortChip(
-                        label = "Terbaru",
-                        icon = Icons.Filled.Schedule,
-                        selected = mode == VideoSortMode.TERBARU,
-                        onClick = { mode = VideoSortMode.TERBARU }
-                    )
-                    Spacer(modifier = Modifier.padding(4.dp))
-                    SortChip(
-                        label = "Folder",
-                        icon = Icons.Filled.Folder,
-                        selected = mode == VideoSortMode.FOLDER,
-                        onClick = { mode = VideoSortMode.FOLDER }
-                    )
-                }
+            Surface(
+                modifier = Modifier.padding(12.dp),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = currentName,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
 
@@ -322,52 +291,102 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            Slider(
-                value = positionMs.toFloat().coerceIn(0f, durationMs.toFloat()),
-                valueRange = 0f..durationMs.toFloat(),
-                onValueChange = {
-                    isDraggingSlider = true
-                    positionMs = it.toLong()
-                },
-                onValueChangeFinished = {
+            CustomSeekBar(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                isDragging = isDraggingSlider,
+                onDragStart = { isDraggingSlider = true },
+                onDrag = { positionMs = it },
+                onDragEnd = {
                     exoPlayer.seekTo(positionMs)
                     isDraggingSlider = false
-                },
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color.White,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                )
+                }
             )
         }
     }
 }
 
 @Composable
-private fun SortChip(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit
+private fun CustomSeekBar(
+    positionMs: Long,
+    durationMs: Long,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDrag: (Long) -> Unit,
+    onDragEnd: () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = if (selected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.5f),
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.padding(end = 6.dp)
+    var widthPx by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+    val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (isDragging) {
+            Text(
+                text = formatTime(positionMs) + " / " + formatTime(durationMs),
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 6.dp)
             )
-            Text(text = label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp)
+                .onGloballyPositioned { widthPx = it.size.width.toFloat() }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            onDragStart()
+                            if (widthPx > 0) {
+                                val frac = (offset.x / widthPx).coerceIn(0f, 1f)
+                                onDrag((frac * durationMs).toLong())
+                            }
+                        },
+                        onDragEnd = { onDragEnd() },
+                        onDragCancel = { onDragEnd() },
+                        onHorizontalDrag = { change, _ ->
+                            if (widthPx > 0) {
+                                val frac = (change.position.x / widthPx).coerceIn(0f, 1f)
+                                onDrag((frac * durationMs).toLong())
+                            }
+                        }
+                    )
+                },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .align(Alignment.Center)
+                    .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(3.dp))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .height(6.dp)
+                    .align(Alignment.CenterStart)
+                    .background(Color.White, RoundedCornerShape(3.dp))
+            )
+            val thumbOffsetDp = with(density) { (widthPx * fraction).toDp() }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = (thumbOffsetDp - 8.dp).let { if (it < 0.dp) 0.dp else it })
+                    .size(16.dp)
+                    .background(Color.White, CircleShape)
+            )
         }
     }
+}
+
+private fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
 }
