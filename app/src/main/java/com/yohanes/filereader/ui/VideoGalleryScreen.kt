@@ -1,5 +1,6 @@
 package com.yohanes.filereader.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -11,14 +12,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,53 +46,74 @@ import java.io.File
 
 private enum class VideoGalleryMode { TERBARU, FOLDER }
 
+private data class FolderGroup(val path: String, val videos: List<FileEntity>) {
+    val label: String get() = path.substringAfterLast('/')
+}
+
 @Composable
 fun VideoGalleryScreen(videos: List<FileEntity>, onFileClick: (FileEntity) -> Unit) {
     var mode by remember { mutableStateOf(VideoGalleryMode.TERBARU) }
+    var selectedFolder by remember { mutableStateOf<FolderGroup?>(null) }
 
-    val gridItems: List<Any> = remember(videos, mode) {
-        if (mode == VideoGalleryMode.TERBARU) {
-            videos.sortedByDescending { it.lastModified }
-        } else {
-            videos
-                .groupBy { File(it.path).parent ?: "/" }
-                .toSortedMap()
-                .flatMap { (folder, list) ->
-                    listOf(folder as Any) + list.sortedByDescending { it.lastModified }
-                }
-        }
+    val folderGroups = remember(videos) {
+        videos
+            .groupBy { File(it.path).parent ?: "/" }
+            .map { (path, list) -> FolderGroup(path, list.sortedByDescending { it.lastModified }) }
+            .sortedBy { it.label.lowercase() }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(4.dp, 4.dp, 4.dp, 64.dp)
-        ) {
-            items(
-                count = gridItems.size,
-                key = { index ->
-                    when (val item = gridItems[index]) {
-                        is String -> "header_$item"
-                        is FileEntity -> item.path
-                        else -> index
+    BackHandler(enabled = selectedFolder != null) {
+        selectedFolder = null
+    }
+
+    if (mode == VideoGalleryMode.FOLDER && selectedFolder != null) {
+        val folder = selectedFolder!!
+        Box(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(4.dp, 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { selectedFolder = null }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
                     }
-                },
-                span = { index ->
-                    if (gridItems[index] is String) GridItemSpan(maxLineSpan) else GridItemSpan(1)
+                    Text(folder.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 }
-            ) { index ->
-                when (val item = gridItems[index]) {
-                    is String -> {
-                        Text(
-                            text = item.substringAfterLast('/'),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)
-                        )
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(4.dp)
+                ) {
+                    items(folder.videos, key = { it.path }) { file ->
+                        VideoThumbnail(file = file, onClick = { onFileClick(file) })
                     }
-                    is FileEntity -> {
-                        VideoThumbnail(file = item, onClick = { onFileClick(item) })
-                    }
+                }
+            }
+        }
+        return
+    }
+
+    val flatVideos = remember(videos) { videos.sortedByDescending { it.lastModified } }
+
+    Box(Modifier.fillMaxSize()) {
+        if (mode == VideoGalleryMode.TERBARU) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(4.dp, 4.dp, 4.dp, 64.dp)
+            ) {
+                items(flatVideos, key = { it.path }) { file ->
+                    VideoThumbnail(file = file, onClick = { onFileClick(file) })
+                }
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(4.dp, 4.dp, 4.dp, 64.dp)
+            ) {
+                items(folderGroups, key = { it.path }) { folder ->
+                    FolderThumbnail(folder = folder, onClick = { selectedFolder = folder })
                 }
             }
         }
@@ -105,7 +129,7 @@ fun VideoGalleryScreen(videos: List<FileEntity>, onFileClick: (FileEntity) -> Un
             ModePill(
                 label = "Terbaru",
                 selected = mode == VideoGalleryMode.TERBARU,
-                onClick = { mode = VideoGalleryMode.TERBARU }
+                onClick = { mode = VideoGalleryMode.TERBARU; selectedFolder = null }
             )
             ModePill(
                 label = "Folder",
@@ -128,6 +152,61 @@ private fun ModePill(label: String, selected: Boolean, onClick: () -> Unit) {
             text = label,
             style = MaterialTheme.typography.labelLarge,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+        )
+    }
+}
+
+@Composable
+private fun FolderThumbnail(folder: FolderGroup, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.padding(2.dp).clickable(onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            val cover = folder.videos.firstOrNull()
+            if (cover != null) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(File(cover.path))
+                        .decoderFactory(VideoFrameDecoder.Factory())
+                        .crossfade(true)
+                        .precision(Precision.INEXACT)
+                        .build(),
+                    contentDescription = folder.label,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    error = {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.Folder, contentDescription = null)
+                        }
+                    }
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    "${folder.videos.size}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White
+                )
+            }
+        }
+        Text(
+            text = folder.label,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp)
         )
     }
 }
@@ -160,10 +239,7 @@ private fun VideoThumbnail(file: FileEntity, onClick: () -> Unit) {
                 )
             },
             error = {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 }
             }
