@@ -5,12 +5,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,13 +17,15 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -37,7 +38,6 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.yohanes.filereader.data.AppDatabase
-import com.yohanes.filereader.data.FavoritesStore
 import com.yohanes.filereader.data.FileEntity
 import com.yohanes.filereader.ui.SortOption
 import kotlinx.coroutines.Dispatchers
@@ -47,22 +47,45 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-private val PlayerBg = Color(0xFF121212)
+private val PlayerBg = Color(0xFF2A2A2E)
+private val PlayerSurface = Color(0xFF303035)
 private val PlayerAccent = Color(0xFF4DD0E1)
 
-private val albumArtCache = android.util.LruCache<String, Bitmap>(20)
-private val noArtCache = mutableSetOf<String>()
+/**
+ * Efek "timbul lembut" ala neumorphism, versi sederhana yang aman dibangun
+ * (shadow standar Compose + garis tepi gradasi, BUKAN blur ganda manual via
+ * Canvas native yang lebih rawan gagal render di sebagian device/versi
+ * Android). Dipakai untuk cover album, tombol kontrol, dan bar pil.
+ */
+private fun Modifier.softRaised(shape: Shape, baseColor: Color): Modifier = this
+    .shadow(elevation = 10.dp, shape = shape, ambientColor = Color.Black, spotColor = Color.Black, clip = false)
+    .background(baseColor, shape)
+    .border(
+        width = 1.dp,
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.16f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.25f)
+            )
+        ),
+        shape = shape
+    )
 
-private suspend fun loadAlbumArt(path: String): Bitmap? {
-    albumArtCache.get(path)?.let { return it }
-    if (noArtCache.contains(path)) return null
+private data class TrackMeta(val art: Bitmap?, val artist: String?)
+
+private val trackMetaCache = mutableMapOf<String, TrackMeta>()
+
+private suspend fun loadTrackMeta(path: String): TrackMeta {
+    trackMetaCache[path]?.let { return it }
     return withContext(Dispatchers.IO) {
-        val bmp = try {
+        val meta = try {
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(path)
+            val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
             val artBytes = retriever.embeddedPicture
             retriever.release()
-            artBytes?.let { bytes ->
+            val art = artBytes?.let { bytes ->
                 val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
                 var inSampleSize = 1
@@ -71,11 +94,12 @@ private suspend fun loadAlbumArt(path: String): Bitmap? {
                 val decodeOptions = BitmapFactory.Options().apply { this.inSampleSize = inSampleSize }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
             }
+            TrackMeta(art, artist)
         } catch (e: Exception) {
-            null
+            TrackMeta(null, null)
         }
-        if (bmp != null) albumArtCache.put(path, bmp) else noArtCache.add(path)
-        bmp
+        trackMetaCache[path] = meta
+        meta
     }
 }
 
@@ -100,10 +124,7 @@ fun AudioPlayerScreen(filePath: String) {
     var currentPosition by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
     var isUserSeeking by remember { mutableStateOf(false) }
-    var albumArt by remember { mutableStateOf<Bitmap?>(null) }
-
-    val favorites by FavoritesStore.favorites.collectAsState()
-    val isFav = favorites.contains(currentMediaId)
+    var trackMeta by remember { mutableStateOf(TrackMeta(null, null)) }
 
     suspend fun loadAndPlay(option: SortOption) {
         val dao = AppDatabase.getInstance(context).fileDao()
@@ -163,7 +184,7 @@ fun AudioPlayerScreen(filePath: String) {
     }
 
     LaunchedEffect(currentMediaId) {
-        albumArt = if (currentMediaId.isNotBlank()) loadAlbumArt(currentMediaId) else null
+        trackMeta = if (currentMediaId.isNotBlank()) loadTrackMeta(currentMediaId) else TrackMeta(null, null)
     }
 
     Column(
@@ -171,87 +192,53 @@ fun AudioPlayerScreen(filePath: String) {
             .fillMaxSize()
             .background(PlayerBg)
             .statusBarsPadding()
-            .padding(20.dp)
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Playlist (${playlist.size} lagu)",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.weight(1f)
-            )
-            var showSortMenu by remember { mutableStateOf(false) }
-            Box {
-                TextButton(onClick = { showSortMenu = true }) {
-                    Text("Urutkan", color = PlayerAccent)
-                }
-                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                    DropdownMenuItem(text = { Text("A-Z") }, onClick = {
-                        sortOption = SortOption.NAME_AZ
-                        showSortMenu = false
-                        scope.launch { loadAndPlay(sortOption) }
-                    })
-                    DropdownMenuItem(text = { Text("Terbaru - Terlama") }, onClick = {
-                        sortOption = SortOption.DATE_NEWEST
-                        showSortMenu = false
-                        scope.launch { loadAndPlay(sortOption) }
-                    })
-                }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
 
         Box(
             Modifier
-                .align(Alignment.CenterHorizontally)
-                .size(240.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.White.copy(alpha = 0.08f)),
+                .size(220.dp)
+                .softRaised(CircleShape, PlayerSurface),
             contentAlignment = Alignment.Center
         ) {
-            val art = albumArt
+            val art = trackMeta.art
             if (art != null) {
                 Image(
                     bitmap = art.asImageBitmap(),
                     contentDescription = "Sampul album",
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(6.dp)
+                        .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Text("\u266A", fontSize = 72.sp, color = Color.White.copy(alpha = 0.3f))
+                Text("\u266A", fontSize = 64.sp, color = Color.White.copy(alpha = 0.25f))
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(28.dp))
 
         Text(
             currentTitle.ifBlank { "Memuat..." },
             style = MaterialTheme.typography.titleLarge,
             color = Color.White,
             maxLines = 2,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(8.dp))
-
-        IconButton(
-            onClick = { if (currentMediaId.isNotBlank()) FavoritesStore.toggle(currentMediaId) },
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Icon(
-                Icons.Filled.Star,
-                contentDescription = "Favorit",
-                tint = if (isFav) Color(0xFFFFC107) else Color.White.copy(alpha = 0.4f)
+        trackMeta.artist?.let { artist ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                artist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.55f)
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(20.dp))
 
         val safeDuration = duration.coerceAtLeast(1L)
         Slider(
@@ -268,63 +255,57 @@ fun AudioPlayerScreen(filePath: String) {
             colors = SliderDefaults.colors(
                 thumbColor = PlayerAccent,
                 activeTrackColor = PlayerAccent,
-                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
             )
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
-            Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
+            Text(formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
+            Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(28.dp))
 
         Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+            Modifier
+                .fillMaxWidth()
+                .softRaised(RoundedCornerShape(50), PlayerSurface)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { controller?.seekToPrevious() }, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = Color.White, modifier = Modifier.size(32.dp))
+            IconButton(onClick = {
+                Toast.makeText(context, "Playlist segera hadir", Toast.LENGTH_SHORT).show()
+            }) {
+                Text("\u2630", fontSize = 22.sp, color = Color.White.copy(alpha = 0.7f))
             }
-            Spacer(Modifier.width(20.dp))
+
+            IconButton(
+                onClick = { controller?.seekToPrevious() },
+                modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+            ) {
+                Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = Color.White, modifier = Modifier.size(26.dp))
+            }
+
             IconButton(
                 onClick = { if (isPlaying) controller?.pause() else controller?.play() },
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(CircleShape)
-                    .background(PlayerAccent)
+                modifier = Modifier.size(70.dp).softRaised(CircleShape, PlayerAccent)
             ) {
                 Icon(
                     if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isPlaying) "Jeda" else "Putar",
                     tint = Color.Black,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
-            Spacer(Modifier.width(20.dp))
-            IconButton(onClick = { controller?.seekToNext() }, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = Color.White, modifier = Modifier.size(32.dp))
+
+            IconButton(
+                onClick = { controller?.seekToNext() },
+                modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+            ) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = Color.White, modifier = Modifier.size(26.dp))
             }
         }
 
-        Spacer(Modifier.height(20.dp))
-
-        LazyColumn(Modifier.fillMaxSize()) {
-            itemsIndexed(playlist) { index, entity ->
-                val isCurrent = entity.path == currentMediaId
-                Text(
-                    entity.name,
-                    style = if (isCurrent) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
-                    color = if (isCurrent) PlayerAccent else Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            controller?.seekTo(index, 0L)
-                            controller?.play()
-                        }
-                        .padding(vertical = 8.dp)
-                )
-            }
-        }
+        Spacer(Modifier.weight(1f))
     }
 }
