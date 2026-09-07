@@ -47,15 +47,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-private val PlayerBg = Color(0xFF2A2A2E)
-private val PlayerSurface = Color(0xFF303035)
-private val PlayerAccent = Color(0xFFD6D6D6)
+private val PlayerBg = Color(0xFFEEEEF2)
+private val PlayerSurface = Color(0xFFEEEEF2)
+private val PlayerAccentCyan = Color(0xFF4DD0E1)
+private val TextDark = Color(0xFF2B2B2E)
 
 /**
- * Efek "timbul lembut" ala neumorphism, versi sederhana yang aman dibangun
- * (shadow standar Compose + garis tepi gradasi, BUKAN blur ganda manual via
- * Canvas native yang lebih rawan gagal render di sebagian device/versi
- * Android). Dipakai untuk cover album, tombol kontrol, dan bar pil.
+ * Efek "timbul lembut" ala neumorphism: shadow standar Compose (hitam,
+ * arah bawah-kanan) + garis tepi gradasi (terang di atas-kiri, gelap di
+ * bawah-kanan). Paling kelihatan di latar terang - itu sebabnya layar ini
+ * dipindah ke tema terang.
  */
 private fun Modifier.softRaised(shape: Shape, baseColor: Color): Modifier = this
     .shadow(elevation = 10.dp, shape = shape, ambientColor = Color.Black, spotColor = Color.Black, clip = false)
@@ -64,9 +65,9 @@ private fun Modifier.softRaised(shape: Shape, baseColor: Color): Modifier = this
         width = 1.dp,
         brush = Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.16f),
+                Color.White.copy(alpha = 0.9f),
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.25f)
+                Color.Black.copy(alpha = 0.12f)
             )
         ),
         shape = shape
@@ -215,7 +216,7 @@ fun AudioPlayerScreen(filePath: String) {
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Text("\u266A", fontSize = 64.sp, color = Color.White.copy(alpha = 0.25f))
+                Text("\u266A", fontSize = 64.sp, color = TextDark.copy(alpha = 0.25f))
             }
         }
 
@@ -224,7 +225,7 @@ fun AudioPlayerScreen(filePath: String) {
         Text(
             currentTitle.ifBlank { "Memuat..." },
             style = MaterialTheme.typography.titleLarge,
-            color = Color.White,
+            color = TextDark,
             maxLines = 2,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -234,7 +235,7 @@ fun AudioPlayerScreen(filePath: String) {
             Text(
                 artist,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f)
+                color = TextDark.copy(alpha = 0.5f)
             )
         }
 
@@ -253,56 +254,68 @@ fun AudioPlayerScreen(filePath: String) {
             },
             valueRange = 0f..safeDuration.toFloat(),
             colors = SliderDefaults.colors(
-                thumbColor = PlayerAccent,
-                activeTrackColor = PlayerAccent,
-                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
+                thumbColor = PlayerAccentCyan,
+                activeTrackColor = PlayerAccentCyan,
+                inactiveTrackColor = TextDark.copy(alpha = 0.15f)
             )
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
-            Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
+            Text(formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
+            Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
         }
 
         Spacer(Modifier.height(28.dp))
 
-        Row(
+        Box(
             Modifier
                 .fillMaxWidth()
                 .softRaised(RoundedCornerShape(50), PlayerSurface)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 12.dp)
         ) {
-            IconButton(onClick = {
-                Toast.makeText(context, "Playlist segera hadir", Toast.LENGTH_SHORT).show()
-            }) {
-                Text("\u2630", fontSize = 22.sp, color = Color.White.copy(alpha = 0.7f))
+            IconButton(
+                onClick = {
+                    Toast.makeText(context, "Playlist segera hadir", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+            ) {
+                Text("\u2630", fontSize = 22.sp, color = TextDark.copy(alpha = 0.6f))
             }
 
-            IconButton(
-                onClick = { controller?.seekToPrevious() },
-                modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+            Row(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = Color.White, modifier = Modifier.size(26.dp))
-            }
+                IconButton(
+                    onClick = { controller?.seekToPrevious() },
+                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+                ) {
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(26.dp))
+                }
 
-            IconButton(
-                onClick = { if (isPlaying) controller?.pause() else controller?.play() },
-                modifier = Modifier.size(70.dp).softRaised(CircleShape, PlayerAccent)
-            ) {
-                Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Jeda" else "Putar",
-                    tint = Color.Black,
-                    modifier = Modifier.size(34.dp)
-                )
-            }
+                IconButton(
+                    onClick = { if (isPlaying) controller?.pause() else controller?.play() },
+                    modifier = Modifier
+                        .size(70.dp)
+                        .softRaised(CircleShape, PlayerSurface)
+                        .border(1.5.dp, PlayerAccentCyan.copy(alpha = 0.6f), CircleShape)
+                ) {
+                    Icon(
+                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Jeda" else "Putar",
+                        tint = PlayerAccentCyan,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
 
-            IconButton(
-                onClick = { controller?.seekToNext() },
-                modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
-            ) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = Color.White, modifier = Modifier.size(26.dp))
+                IconButton(
+                    onClick = { controller?.seekToNext() },
+                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+                ) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(26.dp))
+                }
             }
         }
 
