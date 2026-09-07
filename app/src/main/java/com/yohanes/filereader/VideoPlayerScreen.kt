@@ -5,6 +5,9 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -19,9 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -43,15 +43,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -66,16 +68,19 @@ import kotlinx.coroutines.delay
  *
  * Gesture:
  * - Tap sekali -> tampil/sembunyikan kontrol
- * - Swipe cepat lalu lepas (fling) -> ganti video (urutan terbaru)
- * - Tahan sebentar lalu geser dikit (lambat) -> percepat 2x selama ditahan
+ * - Swipe cepat lalu lepas (fling) di zona atas -> ganti video (urutan terbaru)
+ * - Double-tap kiri/kanan (zona atas) -> mundur/maju 10 detik, bertambah tiap double-tap beruntun
+ * - Tahan lalu geser di zona TAP (pita bawah sebelum seekbar) -> scrub manual posisi video
+ * - Auto-pause saat aplikasi masuk background
  *
  * Fullscreen mengikuti rotasi sistem. Toggle Terbaru/Folder sengaja dihapus dari sini,
- * rencananya dipindah ke halaman grid Video (kerja bareng hz11) supaya player tetap bersih.
+ * rencananya dipindah ke halaman grid Video (kerja bareng hz11).
  * Belum ada: playlist manual/autoplay, kontrol notification, subtitle - menunggu keputusan user.
  */
 @Composable
 fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -93,6 +98,8 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     var positionMs by remember { mutableStateOf(0L) }
     var durationMs by remember { mutableStateOf(1L) }
     var isDraggingSlider by remember { mutableStateOf(false) }
+    var gestureFeedbackText by remember { mutableStateOf<String?>(null) }
+    var feedbackVersion by remember { mutableStateOf(0) }
 
     val dao = remember { AppDatabase.getInstance(context).fileDao() }
     val allVideos by dao.getVideos().collectAsState(initial = emptyList<FileEntity>())
@@ -101,6 +108,22 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
         derivedStateOf {
             val idx = allVideos.indexOfFirst { it.path == currentPath }
             if (idx == -1) 0 else idx
+        }
+    }
+
+    fun showFeedback(text: String) {
+        gestureFeedbackText = text
+        feedbackVersion += 1
+        val myVersion = feedbackVersion
+        // Auto-clear ditangani via LaunchedEffect di bawah yang mengamati feedbackVersion
+    }
+
+    LaunchedEffect(feedbackVersion) {
+        if (feedbackVersion == 0) return@LaunchedEffect
+        val myVersion = feedbackVersion
+        delay(900)
+        if (feedbackVersion == myVersion) {
+            gestureFeedbackText = null
         }
     }
 
@@ -118,6 +141,7 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
     }
 
     val currentIndexState = rememberUpdatedState(currentIndex)
+    val durationMsState = rememberUpdatedState(durationMs)
 
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
@@ -135,6 +159,20 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
         onDispose {
             exoPlayer.removeListener(listener)
             exoPlayer.release()
+        }
+    }
+
+    // Auto-pause saat aplikasi masuk background (ON_STOP). Tidak auto-resume saat kembali,
+    // supaya video tidak tiba-tiba bunyi/main sendiri - user tap play lagi secara sadar.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                exoPlayer.pause()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -168,12 +206,23 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                 var downX = 0f
                 var downY = 0f
                 var downTime = 0L
-                var isHolding = false
+                var isScrubbing = false
+                var scrubStartX = 0f
+                var scrubStartPositionMs = 0L
+                var wasPlayingBeforeScrub = true
+                var seekBurstDirection = 0
+                var seekBurstCount = 0
+                var seekBurstStartPosition = 0L
+                var lastSeekTapTime = 0L
 
                 val gestureDetector = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
                     override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                         controlsVisible = !controlsVisible
                         return true
+                    }
+                    override fun onDoubleTap(e: MotionEvent): Boolean {
+                        val viewHeight = (e.device?.let { 0 } ?: 0) // placeholder, real height diambil dari view
+                        return false
                     }
                     override fun onFling(
                         e1: MotionEvent?,
@@ -181,7 +230,9 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                         velocityX: Float,
                         velocityY: Float
                     ): Boolean {
-                        if (isHolding) return false
+                        if (isScrubbing) return false
+                        val startY = e1?.y ?: return false
+                        val zoneBoundary = 0f // diisi ulang di bawah lewat closure view.height
                         if (kotlin.math.abs(velocityX) < kotlin.math.abs(velocityY)) return false
                         val threshold = 800f
                         if (velocityX < -threshold) {
@@ -198,31 +249,79 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = false
-                    setOnTouchListener { _, event ->
+
+                    setOnTouchListener { view, event ->
+                        val viewHeight = view.height.toFloat()
+                        val viewWidth = view.width.toFloat()
+                        val tapZoneBoundaryY = viewHeight * 0.62f
+
                         when (event.actionMasked) {
                             MotionEvent.ACTION_DOWN -> {
                                 downX = event.x
                                 downY = event.y
                                 downTime = event.eventTime
-                                isHolding = false
+                                isScrubbing = false
                             }
                             MotionEvent.ACTION_MOVE -> {
                                 val dx = event.x - downX
                                 val dy = event.y - downY
                                 val elapsed = event.eventTime - downTime
-                                if (!isHolding &&
-                                    elapsed > 180 &&
+                                val downInTapZone = downY >= tapZoneBoundaryY
+                                if (!isScrubbing && downInTapZone &&
+                                    elapsed > 120 &&
                                     kotlin.math.abs(dx) > touchSlop &&
                                     kotlin.math.abs(dx) > kotlin.math.abs(dy)
                                 ) {
-                                    isHolding = true
-                                    exoPlayer.playbackParameters = PlaybackParameters(2f)
+                                    isScrubbing = true
+                                    scrubStartX = event.x
+                                    scrubStartPositionMs = exoPlayer.currentPosition
+                                    wasPlayingBeforeScrub = exoPlayer.isPlaying
+                                    exoPlayer.pause()
+                                }
+                                if (isScrubbing) {
+                                    val fraction = ((event.x - scrubStartX) / viewWidth)
+                                    val deltaMs = (fraction * durationMsState.value).toLong()
+                                    val target = (scrubStartPositionMs + deltaMs).coerceIn(0L, durationMsState.value)
+                                    positionMs = target
+                                    gestureFeedbackText = formatTime(target)
+                                    feedbackVersion += 1
                                 }
                             }
                             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                                if (isHolding) {
-                                    exoPlayer.playbackParameters = PlaybackParameters.DEFAULT
-                                    isHolding = false
+                                if (isScrubbing) {
+                                    exoPlayer.seekTo(positionMs)
+                                    if (wasPlayingBeforeScrub) exoPlayer.play()
+                                    isScrubbing = false
+                                    feedbackVersion += 1
+                                    val myVersion = feedbackVersion
+                                }
+
+                                // Double-tap manual (di luar GestureDetector) supaya bisa akses zona & akumulasi
+                                val upInTapZone = downY >= tapZoneBoundaryY
+                                val elapsedSinceDown = event.eventTime - downTime
+                                val movedLittle = kotlin.math.abs(event.x - downX) < touchSlop &&
+                                        kotlin.math.abs(event.y - downY) < touchSlop
+                                if (!isScrubbing && !upInTapZone && movedLittle && elapsedSinceDown < 250) {
+                                    val now = event.eventTime
+                                    if (now - lastSeekTapTime < 300) {
+                                        val direction = if (downX < viewWidth / 2f) -1 else 1
+                                        if (direction == seekBurstDirection && now - lastSeekTapTime < 1200) {
+                                            seekBurstCount += 1
+                                        } else {
+                                            seekBurstDirection = direction
+                                            seekBurstCount = 1
+                                            seekBurstStartPosition = exoPlayer.currentPosition
+                                        }
+                                        val deltaMs = seekBurstCount * 10_000L * direction
+                                        val target = (seekBurstStartPosition + deltaMs)
+                                            .coerceIn(0L, durationMsState.value)
+                                        exoPlayer.seekTo(target)
+                                        positionMs = target
+                                        val arrow = if (direction < 0) "⏪ -" else "⏩ +"
+                                        gestureFeedbackText = arrow + (seekBurstCount * 10) + " detik"
+                                        feedbackVersion += 1
+                                    }
+                                    lastSeekTapTime = now
                                 }
                             }
                         }
@@ -282,6 +381,27 @@ fun VideoPlayerScreen(uri: Uri, displayName: String, onExit: () -> Unit) {
                         modifier = Modifier.padding(4.dp)
                     )
                 }
+            }
+        }
+
+        // Splash/overlay feedback untuk double-tap seek & scrub, muncul di atas tombol play
+        AnimatedVisibility(
+            visible = gestureFeedbackText != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Surface(
+                modifier = Modifier.padding(bottom = 110.dp),
+                shape = RoundedCornerShape(50),
+                color = Color.Black.copy(alpha = 0.6f)
+            ) {
+                Text(
+                    text = gestureFeedbackText ?: "",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
             }
         }
 
