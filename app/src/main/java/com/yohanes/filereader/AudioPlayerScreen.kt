@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -52,12 +53,6 @@ private val PlayerSurface = Color(0xFFEEEEF2)
 private val PlayerAccentCyan = Color(0xFF4DD0E1)
 private val TextDark = Color(0xFF2B2B2E)
 
-/**
- * Efek "timbul lembut" ala neumorphism: shadow standar Compose (hitam,
- * arah bawah-kanan) + garis tepi gradasi (terang di atas-kiri, gelap di
- * bawah-kanan). Paling kelihatan di latar terang - itu sebabnya layar ini
- * dipindah ke tema terang.
- */
 private fun Modifier.softRaised(shape: Shape, baseColor: Color): Modifier = this
     .shadow(elevation = 10.dp, shape = shape, ambientColor = Color.Black, spotColor = Color.Black, clip = false)
     .background(baseColor, shape)
@@ -73,20 +68,17 @@ private fun Modifier.softRaised(shape: Shape, baseColor: Color): Modifier = this
         shape = shape
     )
 
-private data class TrackMeta(val art: Bitmap?, val artist: String?)
+private val albumArtCache = mutableMapOf<String, Bitmap?>()
 
-private val trackMetaCache = mutableMapOf<String, TrackMeta>()
-
-private suspend fun loadTrackMeta(path: String): TrackMeta {
-    trackMetaCache[path]?.let { return it }
+private suspend fun loadAlbumArt(path: String): Bitmap? {
+    if (albumArtCache.containsKey(path)) return albumArtCache[path]
     return withContext(Dispatchers.IO) {
-        val meta = try {
+        val art = try {
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(path)
-            val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
             val artBytes = retriever.embeddedPicture
             retriever.release()
-            val art = artBytes?.let { bytes ->
+            artBytes?.let { bytes ->
                 val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
                 var inSampleSize = 1
@@ -95,13 +87,18 @@ private suspend fun loadTrackMeta(path: String): TrackMeta {
                 val decodeOptions = BitmapFactory.Options().apply { this.inSampleSize = inSampleSize }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
             }
-            TrackMeta(art, artist)
         } catch (e: Exception) {
-            TrackMeta(null, null)
+            null
         }
-        trackMetaCache[path] = meta
-        meta
+        albumArtCache[path] = art
+        art
     }
+}
+
+/** Bersihkan nama file jadi judul yang enak dibaca: buang ekstensi, underscore jadi spasi. */
+private fun cleanTitle(rawName: String): String {
+    val withoutExt = rawName.substringBeforeLast(".")
+    return withoutExt.replace("_", " ").trim()
 }
 
 private fun formatDuration(ms: Long): String {
@@ -125,7 +122,7 @@ fun AudioPlayerScreen(filePath: String) {
     var currentPosition by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
     var isUserSeeking by remember { mutableStateOf(false) }
-    var trackMeta by remember { mutableStateOf(TrackMeta(null, null)) }
+    var albumArt by remember { mutableStateOf<Bitmap?>(null) }
 
     suspend fun loadAndPlay(option: SortOption) {
         val dao = AppDatabase.getInstance(context).fileDao()
@@ -185,7 +182,7 @@ fun AudioPlayerScreen(filePath: String) {
     }
 
     LaunchedEffect(currentMediaId) {
-        trackMeta = if (currentMediaId.isNotBlank()) loadTrackMeta(currentMediaId) else TrackMeta(null, null)
+        albumArt = if (currentMediaId.isNotBlank()) loadAlbumArt(currentMediaId) else null
     }
 
     Column(
@@ -193,6 +190,7 @@ fun AudioPlayerScreen(filePath: String) {
             .fillMaxSize()
             .background(PlayerBg)
             .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -204,7 +202,7 @@ fun AudioPlayerScreen(filePath: String) {
                 .softRaised(CircleShape, PlayerSurface),
             contentAlignment = Alignment.Center
         ) {
-            val art = trackMeta.art
+            val art = albumArt
             if (art != null) {
                 Image(
                     bitmap = art.asImageBitmap(),
@@ -223,23 +221,14 @@ fun AudioPlayerScreen(filePath: String) {
         Spacer(Modifier.height(28.dp))
 
         Text(
-            currentTitle.ifBlank { "Memuat..." },
+            cleanTitle(currentTitle.ifBlank { "Memuat..." }),
             style = MaterialTheme.typography.titleLarge,
             color = TextDark,
             maxLines = 2,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        trackMeta.artist?.let { artist ->
-            Spacer(Modifier.height(4.dp))
-            Text(
-                artist,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextDark.copy(alpha = 0.5f)
-            )
-        }
-
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(40.dp))
 
         val safeDuration = duration.coerceAtLeast(1L)
         Slider(
@@ -264,13 +253,13 @@ fun AudioPlayerScreen(filePath: String) {
             Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
 
         Box(
             Modifier
                 .fillMaxWidth()
                 .softRaised(RoundedCornerShape(50), PlayerSurface)
-                .padding(vertical = 12.dp)
+                .padding(vertical = 16.dp)
         ) {
             IconButton(
                 onClick = {
@@ -280,25 +269,25 @@ fun AudioPlayerScreen(filePath: String) {
                     .align(Alignment.CenterStart)
                     .padding(start = 16.dp)
             ) {
-                Text("\u2630", fontSize = 22.sp, color = TextDark.copy(alpha = 0.6f))
+                Icon(Icons.Default.Menu, contentDescription = "Playlist", tint = TextDark.copy(alpha = 0.6f), modifier = Modifier.size(24.dp))
             }
 
             Row(
                 modifier = Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = { controller?.seekToPrevious() },
-                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+                    modifier = Modifier.size(60.dp).softRaised(CircleShape, PlayerSurface)
                 ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(26.dp))
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(30.dp))
                 }
 
                 IconButton(
                     onClick = { if (isPlaying) controller?.pause() else controller?.play() },
                     modifier = Modifier
-                        .size(70.dp)
+                        .size(84.dp)
                         .softRaised(CircleShape, PlayerSurface)
                         .border(1.5.dp, PlayerAccentCyan.copy(alpha = 0.6f), CircleShape)
                 ) {
@@ -306,19 +295,19 @@ fun AudioPlayerScreen(filePath: String) {
                         if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Jeda" else "Putar",
                         tint = PlayerAccentCyan,
-                        modifier = Modifier.size(34.dp)
+                        modifier = Modifier.size(40.dp)
                     )
                 }
 
                 IconButton(
                     onClick = { controller?.seekToNext() },
-                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
+                    modifier = Modifier.size(60.dp).softRaised(CircleShape, PlayerSurface)
                 ) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(26.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(30.dp))
                 }
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
