@@ -149,6 +149,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         .cachedIn(viewModelScope)
 
+    val videos: StateFlow<List<FileEntity>> = dao.getVideos()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
 
     init {

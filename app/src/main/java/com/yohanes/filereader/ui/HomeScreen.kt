@@ -534,6 +534,9 @@ private fun CategoryDetailScreen(
             }
         } else if (category == "Gambar") {
             ImageGalleryScreen(imagesFlow = viewModel.imagesPaged, onFileClick = onFileClick)
+        } else if (category == "Video") {
+            val videos by viewModel.videos.collectAsState()
+            VideoGalleryScreen(videos = videos, onFileClick = onFileClick)
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(files) { file ->
