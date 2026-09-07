@@ -27,9 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,17 +42,19 @@ import coil.size.Precision
 import com.yohanes.filereader.data.FileEntity
 import java.io.File
 
-private enum class VideoGalleryMode { TERBARU, FOLDER }
-
 private data class FolderGroup(val path: String, val videos: List<FileEntity>) {
     val label: String get() = path.substringAfterLast('/')
 }
 
 @Composable
-fun VideoGalleryScreen(videos: List<FileEntity>, onFileClick: (FileEntity) -> Unit) {
-    var mode by remember { mutableStateOf(VideoGalleryMode.TERBARU) }
-    var selectedFolder by remember { mutableStateOf<FolderGroup?>(null) }
-
+fun VideoGalleryScreen(
+    videos: List<FileEntity>,
+    mode: VideoGalleryMode,
+    onModeChange: (VideoGalleryMode) -> Unit,
+    selectedFolderPath: String?,
+    onFolderSelected: (String?) -> Unit,
+    onFileClick: (FileEntity) -> Unit
+) {
     val folderGroups = remember(videos) {
         videos
             .groupBy { File(it.path).parent ?: "/" }
@@ -62,19 +62,23 @@ fun VideoGalleryScreen(videos: List<FileEntity>, onFileClick: (FileEntity) -> Un
             .sortedBy { it.label.lowercase() }
     }
 
-    BackHandler(enabled = selectedFolder != null) {
-        selectedFolder = null
+    val selectedFolder = remember(folderGroups, selectedFolderPath) {
+        folderGroups.find { it.path == selectedFolderPath }
+    }
+
+    BackHandler(enabled = selectedFolderPath != null) {
+        onFolderSelected(null)
     }
 
     if (mode == VideoGalleryMode.FOLDER && selectedFolder != null) {
-        val folder = selectedFolder!!
+        val folder = selectedFolder
         Box(Modifier.fillMaxSize()) {
             androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
                 Row(
                     Modifier.fillMaxWidth().padding(4.dp, 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { selectedFolder = null }) {
+                    IconButton(onClick = { onFolderSelected(null) }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
                     }
                     Text(folder.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
@@ -113,7 +117,7 @@ fun VideoGalleryScreen(videos: List<FileEntity>, onFileClick: (FileEntity) -> Un
                 contentPadding = PaddingValues(4.dp, 4.dp, 4.dp, 64.dp)
             ) {
                 items(folderGroups, key = { it.path }) { folder ->
-                    FolderThumbnail(folder = folder, onClick = { selectedFolder = folder })
+                    FolderThumbnail(folder = folder, onClick = { onFolderSelected(folder.path) })
                 }
             }
         }
@@ -129,12 +133,12 @@ fun VideoGalleryScreen(videos: List<FileEntity>, onFileClick: (FileEntity) -> Un
             ModePill(
                 label = "Terbaru",
                 selected = mode == VideoGalleryMode.TERBARU,
-                onClick = { mode = VideoGalleryMode.TERBARU; selectedFolder = null }
+                onClick = { onModeChange(VideoGalleryMode.TERBARU) }
             )
             ModePill(
                 label = "Folder",
                 selected = mode == VideoGalleryMode.FOLDER,
-                onClick = { mode = VideoGalleryMode.FOLDER }
+                onClick = { onModeChange(VideoGalleryMode.FOLDER) }
             )
         }
     }

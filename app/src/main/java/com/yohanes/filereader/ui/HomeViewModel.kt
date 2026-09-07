@@ -30,6 +30,8 @@ enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
 val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Video", "Audio", "Teks/Kode", "Favorit")
 
+enum class VideoGalleryMode { TERBARU, FOLDER }
+
 sealed class GalleryItem {
     data class Header(val label: String) : GalleryItem()
     data class Photo(val file: FileEntity) : GalleryItem()
@@ -151,6 +153,19 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     val videos: StateFlow<List<FileEntity>> = dao.getVideos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Terbaru/Folder - dinaikkan ke sini (bukan remember lokal di VideoGalleryScreen)
+    // supaya tidak ter-reset saat composable grid dilepas total ketika video diputar.
+    private val _videoGalleryMode = MutableStateFlow(VideoGalleryMode.TERBARU)
+    val videoGalleryMode: StateFlow<VideoGalleryMode> = _videoGalleryMode
+    fun setVideoGalleryMode(mode: VideoGalleryMode) {
+        _videoGalleryMode.value = mode
+        if (mode == VideoGalleryMode.TERBARU) _selectedVideoFolderPath.value = null
+    }
+
+    private val _selectedVideoFolderPath = MutableStateFlow<String?>(null)
+    val selectedVideoFolderPath: StateFlow<String?> = _selectedVideoFolderPath
+    fun selectVideoFolder(path: String?) { _selectedVideoFolderPath.value = path }
 
     private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
 

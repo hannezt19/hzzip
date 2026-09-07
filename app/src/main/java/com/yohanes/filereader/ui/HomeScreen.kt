@@ -490,7 +490,16 @@ private fun CategoryDetailScreen(
             ImageGalleryScreen(imagesFlow = viewModel.imagesPaged, onFileClick = onFileClick)
         } else if (category == "Video") {
             val videos by viewModel.videos.collectAsState()
-            VideoGalleryScreen(videos = videos, onFileClick = onFileClick)
+            val videoMode by viewModel.videoGalleryMode.collectAsState()
+            val selectedVideoFolder by viewModel.selectedVideoFolderPath.collectAsState()
+            VideoGalleryScreen(
+                videos = videos,
+                mode = videoMode,
+                onModeChange = { viewModel.setVideoGalleryMode(it) },
+                selectedFolderPath = selectedVideoFolder,
+                onFolderSelected = { viewModel.selectVideoFolder(it) },
+                onFileClick = onFileClick
+            )
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(files) { file ->
