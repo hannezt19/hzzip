@@ -28,6 +28,8 @@ import com.yohanes.filereader.ui.CodeEditorScreen
 import com.yohanes.filereader.ui.HomeScreen
 import com.yohanes.filereader.ui.HomeViewModel
 import com.yohanes.filereader.ui.PdfViewerScreen
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -149,6 +151,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     @Composable
     private fun AppRoot() {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -214,7 +217,7 @@ class MainActivity : ComponentActivity() {
                         title = { Text("File Reader") },
                         navigationIcon = {
                             IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
-                                Icon(androidx.compose.material.icons.Icons.Filled.Menu, contentDescription = "Menu")
+                                Icon(Icons.Filled.Menu, contentDescription = "Menu")
                             }
                         }
                     )
