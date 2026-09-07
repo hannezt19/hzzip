@@ -180,9 +180,12 @@ class MainActivity : ComponentActivity() {
             val drawerScope = rememberCoroutineScope()
             ModalNavigationDrawer(
                 drawerState = drawerState,
+                gesturesEnabled = drawerState.isOpen,
                 drawerContent = {
-                    ModalDrawerSheet {
+                    ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.4f)) {
                         com.yohanes.filereader.ui.AppDrawerContent(
+                            isDarkMode = ThemeStore.isDarkMode.collectAsState().value,
+                            onToggleDarkMode = { ThemeStore.toggle() },
                             onBeranda = {
                                 homeViewModel.onCategorySelected(null)
                                 homeViewModel.closeDirektori()
@@ -203,52 +206,37 @@ class MainActivity : ComponentActivity() {
                                 selectedTab = com.yohanes.filereader.ui.AppTab.HOME
                                 drawerScope.launch { drawerState.close() }
                             },
-                            onPengaturan = {
-                                selectedTab = com.yohanes.filereader.ui.AppTab.SETTINGS
-                                drawerScope.launch { drawerState.close() }
-                            }
                         )
                     }
                 }
             ) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("File Reader") },
-                        navigationIcon = {
-                            IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, contentDescription = "Menu")
-                            }
+            Box(Modifier.fillMaxSize()) {
+                when (selectedTab) {
+                    com.yohanes.filereader.ui.AppTab.HOME -> HomeScreen(
+                        viewModel = homeViewModel,
+                        onFileClick = { file ->
+                            loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
+                        },
+                        onPickFileManually = {
+                            openDocumentLauncher.launch(
+                                arrayOf(
+                                    "application/pdf", "application/json", "text/html",
+                                    "text/javascript", "application/javascript", "text/plain"
+                                )
+                            )
+                        }
+                    )
+                    com.yohanes.filereader.ui.AppTab.RECENT -> com.yohanes.filereader.ui.RecentScreen(
+                        onFileClick = { file ->
+                            loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
                         }
                     )
                 }
-            ) { padding ->
-                Box(Modifier.padding(padding)) {
-                    when (selectedTab) {
-                        com.yohanes.filereader.ui.AppTab.HOME -> HomeScreen(
-                            viewModel = homeViewModel,
-                            onFileClick = { file ->
-                                loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
-                            },
-                            onPickFileManually = {
-                                openDocumentLauncher.launch(
-                                    arrayOf(
-                                        "application/pdf", "application/json", "text/html",
-                                        "text/javascript", "application/javascript", "text/plain"
-                                    )
-                                )
-                            }
-                        )
-                        com.yohanes.filereader.ui.AppTab.RECENT -> com.yohanes.filereader.ui.RecentScreen(
-                            onFileClick = { file ->
-                                loadFile(android.net.Uri.fromFile(java.io.File(file.path)))
-                            }
-                        )
-                        com.yohanes.filereader.ui.AppTab.SETTINGS -> com.yohanes.filereader.ui.SettingsScreen(
-                            isDarkMode = ThemeStore.isDarkMode.collectAsState().value,
-                            onToggleDarkMode = { ThemeStore.toggle() }
-                        )
-                    }
+                IconButton(
+                    onClick = { drawerScope.launch { drawerState.open() } },
+                    modifier = Modifier.statusBarsPadding().padding(4.dp)
+                ) {
+                    Icon(Icons.Filled.Menu, contentDescription = "Menu")
                 }
             }
             }

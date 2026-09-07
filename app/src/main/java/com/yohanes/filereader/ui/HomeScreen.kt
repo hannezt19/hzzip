@@ -482,16 +482,6 @@ private fun CategoryDetailScreen(
     val files by viewModel.files.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(4.dp, 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
-            }
-            Text(category, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        }
-
         if (files.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Tidak ada file di kategori ini")
