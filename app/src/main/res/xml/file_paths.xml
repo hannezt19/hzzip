@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Mencakup seluruh penyimpanan eksternal, karena app pakai izin
+         MANAGE_EXTERNAL_STORAGE dan file bisa ada di folder mana saja. -->
+    <external-path name="external_files" path="." />
+</paths>
