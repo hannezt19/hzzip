@@ -1,7 +1,9 @@
 package com.yohanes.filereader.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.yohanes.filereader.data.FileClipboard
 import com.yohanes.filereader.data.FileEntity
 
 @Composable
@@ -48,10 +51,12 @@ fun HomeScreen(
     }
 
     val showDirektori by viewModel.showDirektori.collectAsState()
+    val onFileLongClick: (FileEntity) -> Unit = { viewModel.openActionSheet(it) }
 
     when {
         showDirektori -> DirektoriScreen(
             onFileClick = onFileClick,
+            onFileLongClick = onFileLongClick,
             onBack = { viewModel.closeDirektori() }
         )
         showAnalisis -> AnalisisScreen(onBack = { showAnalisis = false })
@@ -59,15 +64,30 @@ fun HomeScreen(
             viewModel = viewModel,
             category = selectedCategory!!,
             onBack = { viewModel.onCategorySelected(null) },
-            onFileClick = onFileClick
+            onFileClick = onFileClick,
+            onFileLongClick = onFileLongClick
         )
         else -> CategoryHomeScreen(
             viewModel = viewModel,
             onCategoryClick = { viewModel.onCategorySelected(it) },
             onFileClick = onFileClick,
+            onFileLongClick = onFileLongClick,
             onPickFileManually = onPickFileManually,
             onAnalisisClick = { showAnalisis = true },
             onDirektoriClick = { viewModel.openDirektori() }
+        )
+    }
+
+    val actionSheetFile by viewModel.actionSheetFile.collectAsState()
+    val currentActionSheetFile = actionSheetFile
+    if (currentActionSheetFile != null) {
+        FileActionSheet(
+            file = currentActionSheetFile,
+            onDismiss = { viewModel.closeActionSheet() },
+            onCopy = { FileClipboard.copy(it) },
+            onCut = { FileClipboard.cut(it) },
+            onDeleteConfirmed = { viewModel.deleteFile(it) },
+            onRenameConfirmed = { f, newName -> viewModel.renameFile(f, newName) }
         )
     }
 }
@@ -77,6 +97,7 @@ private fun CategoryHomeScreen(
     viewModel: HomeViewModel,
     onCategoryClick: (String) -> Unit,
     onFileClick: (FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit,
     onPickFileManually: () -> Unit,
     onAnalisisClick: () -> Unit,
     onDirektoriClick: () -> Unit
@@ -118,7 +139,7 @@ private fun CategoryHomeScreen(
                 } else {
                     LazyColumn(Modifier.fillMaxSize()) {
                         items(searchResults) { file ->
-                            FileRow(file = file, onClick = { onFileClick(file) })
+                            FileRow(file = file, onClick = { onFileClick(file) }, onLongClick = { onFileLongClick(file) })
                             Divider()
                         }
                     }
@@ -224,7 +245,7 @@ private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Col
 }
 
 @Composable
-private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onBack: () -> Unit) {
+private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onFileLongClick: (FileEntity) -> Unit, onBack: () -> Unit) {
     val rootPath = android.os.Environment.getExternalStorageDirectory().path
     var currentDir by remember { mutableStateOf(java.io.File(rootPath)) }
 
@@ -305,25 +326,17 @@ private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onBack: () -> Uni
                             }
                         }
                     } else {
+                        val fileEntity = FileEntity(
+                            path = entry.absolutePath,
+                            name = entry.name,
+                            extension = entry.extension.lowercase(),
+                            sizeBytes = entry.length(),
+                            lastModified = entry.lastModified()
+                        )
                         FileRow(
-                            file = FileEntity(
-                                path = entry.absolutePath,
-                                name = entry.name,
-                                extension = entry.extension.lowercase(),
-                                sizeBytes = entry.length(),
-                                lastModified = entry.lastModified()
-                            ),
-                            onClick = {
-                                onFileClick(
-                                    FileEntity(
-                                        path = entry.absolutePath,
-                                        name = entry.name,
-                                        extension = entry.extension.lowercase(),
-                                        sizeBytes = entry.length(),
-                                        lastModified = entry.lastModified()
-                                    )
-                                )
-                            }
+                            file = fileEntity,
+                            onClick = { onFileClick(fileEntity) },
+                            onLongClick = { onFileLongClick(fileEntity) }
                         )
                     }
                     Divider()
@@ -477,7 +490,8 @@ private fun CategoryDetailScreen(
     viewModel: HomeViewModel,
     category: String,
     onBack: () -> Unit,
-    onFileClick: (FileEntity) -> Unit
+    onFileClick: (FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit
 ) {
     val files by viewModel.files.collectAsState()
 
@@ -524,13 +538,14 @@ private fun CategoryDetailScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FileRow(file: FileEntity, onClick: () -> Unit) {
+private fun FileRow(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .padding(16.dp, 12.dp)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
