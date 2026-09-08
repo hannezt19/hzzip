@@ -28,7 +28,9 @@ import kotlinx.coroutines.withContext
 
 enum class SortOption { NAME_AZ, DATE_NEWEST, SIZE_LARGEST }
 
-val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Video", "Audio", "Teks/Kode", "Favorit")
+// "Favorit" sengaja tidak dimasukkan di sini - sudah ada menu Favorit terpisah di drawer
+// (lihat onFavorit di MainActivity.kt), jadi kartu di grid Beranda dihilangkan supaya tidak dobel.
+val CATEGORY_LIST = listOf("PDF", "Gambar", "Excel", "Video", "Audio", "Teks/Kode")
 
 enum class VideoGalleryMode { TERBARU, FOLDER }
 

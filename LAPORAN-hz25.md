@@ -3,7 +3,7 @@
 
 ## Fase Kerja
 - Toggle Terbaru/Folder untuk PDF/Excel/Teks-Kode/Favorit + perluasan ke Gambar - [SELESAI]
-- Hapus kartu "Favorit" dari grid Beranda - [PROSES] (dikerjakan sesi ini)
+- Hapus kartu "Favorit" dari grid Beranda - [SELESAI] (patch masuk, menunggu build+tes HP untuk konfirmasi final)
 - Tugas 2: sistem FileActionSheet (clipboard/file-ops) - [BELUM]
 
 ## Kesepakatan Baru dengan User
@@ -26,6 +26,7 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 - (kosong - bug label-bulan mode Terbaru Gambar sudah dialihkan jadi tanggung jawab hz19 per keputusan hz11)
 
 ## Log Pencapaian
+- 8 Sept: hapus "Favorit" dari CATEGORY_LIST (kartu Beranda) - drawer sudah punya menu sama, tidak dobel lagi
 - 8 Sept: fix pill toggle Video ketutupan navbar sistem
 - 8 Sept: toggle Terbaru/Folder untuk PDF/Excel/Teks-Kode/Favorit (`FileListWithModeToggle.kt` baru)
 - 8 Sept: fix import `height` yang kelewat di `FileListWithModeToggle.kt`
