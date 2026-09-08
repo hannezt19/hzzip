@@ -30,4 +30,10 @@
 
 - **PDF page-turn**: sudah jauh lebih nyaman, tapi masih ada ruang perbaikan/polish kecil (belum dianggap tuntas 100%)
 - **Zoom PDF melebihi frame**: SUDAH FIX
-- **Label bulan hilang di mode Terbaru galeri Gambar**: header pemisah bulan cuma tampil untuk bulan berjalan, bulan lain fotonya tetap ada tapi headernya hilang - pernah dicoba diperbaiki akun lain, belum tuntas
+- **Label bulan hilang di mode Terbaru galeri Gambar**: header pemisah bulan cuma tampil untuk bulan berjalan, bulan lain fotonya tetap ada tapi headernya hilang - kepemilikan dipegang hz19, dugaan terbaru mengarah ke logika insertSeparators/Paging3, masih investigasi
+- **hamburger Beranda tidak sejajar 1 baris dengan search bar**: SUDAH DIPUTUSKAN user - kondisi sekarang (reserved space baris terpisah) sudah cukup, TIDAK perlu diubah
+
+## Keputusan Desain Tambahan (8 Sept)
+
+- **Sistem koordinasi proyek**: hz11 sebagai koordinator/router murni, 4 akun eksekutor kerja paralel-bergantian. Alur: user eksekusi langsung dengan eksekutor -> user informasikan hasil ke hz11 -> hz11 update file acuan. Detail lengkap di CONVENTIONS.md & TODO.md.
+- **Kartu Favorit di grid Beranda**: DIKONFIRMASI FINAL akan dihapus (dobel dengan menu Favorit di drawer) - tugas dilimpahkan ke hz25

@@ -1,16 +1,33 @@
 # TODO - FileReaderApp
 
-> Update terakhir (8 Sept, oleh hz11/koordinator): ditulis ulang total, isi lama (per 3 Sept) sudah usang.
-> File ini isinya HANYA tugas paling dekat/mendesak (maksimal 5 poin). Rencana besar ada di ROADMAP.md.
-> Kalau file ini diupdate: hapus poin yang sudah selesai, tulis status terbaru di baris ini.
+> Dikelola oleh hz11 (koordinator). Update terakhir: 8 Sept 2026 - pembagian kerja diperjelas ulang setelah koreksi scope hz21 (bukan Direktori, tapi PDF SettingsPanel) dan alih kepemilikan bug label-bulan ke hz19.
+> File ini isinya tugas AKTIF tiap akun + keputusan yang masih menunggu user. Rencana besar/jangka panjang ada di ROADMAP.md.
 
-## Sedang Dikerjakan / Berikutnya
+## Pembagian Kerja Aktif
 
-1. [ ] **hz25** - Tugas 2: sistem `FileActionSheet` (clipboard salin/potong/hapus/ganti nama/properti file) - mulai dari FileDao, lalu FileClipboard, lalu FileActionSheet, sambung ke FileRow & VideoThumbnail, baru tombol Tempel di Direktori
-2. [ ] **ydiv2** - lanjut Tahap B playlist Audio (tabel Room baru, panel 2 tab) - cek dulu AppDatabase.kt/FileDao.kt biar tidak bentrok hz19
-3. [ ] Polish kecil bug PDF page-turn (belum tuntas 100%, tapi bukan prioritas mendesak)
+### hz19 - Kategori Gambar
+- [PROSES] Investigasi ulang bug label bulan hilang di mode Terbaru galeri Gambar (dugaan: logika insertSeparators/Paging3 di ImageGalleryScreen.kt)
+- [BELUM] Koordinasi ImageThumbnail dengan hz25 untuk integrasi FileActionSheet
+- Rencana berikutnya: Fast Scroller gaya Google Photos -> Grouping galeri final -> Deteksi foto duplikat
+
+### hz21 - PDF SettingsPanel / Mode Baca
+- [PROSES] Verifikasi visual final SettingsPanel (Warna Latar/Kontras/Mode Baca/TTS/ID di PdfViewerScreen.kt) - perlu build+tes di HP
+- Catatan: hamburger Beranda SUDAH diputuskan user cukup seperti sekarang - item ini SELESAI/ditutup
+
+### hz25 - Video / Toggle Terbaru-Folder / FileActionSheet
+- [SELESAI] Tugas 1: toggle Terbaru/Folder untuk PDF/Excel/Teks-Kode/Favorit + perluasan ke Gambar
+- [BELUM] Tugas 2: sistem FileActionSheet - urutan: FileDao (deleteByPath/renamePath) -> FileClipboard.kt -> FileActionSheet.kt -> sambung FileRow & VideoThumbnail -> tombol Tempel di DirektoriScreen. ImageThumbnail ditunda sampai re-koordinasi hz19.
+- [BELUM] Tugas baru: hapus kartu "Favorit" dari grid Beranda (HomeScreen.kt/HomeViewModel.kt CATEGORY_LIST) - user KONFIRMASI FINAL
+
+### ydiv2 - PDF TTS / Audio Player
+- [SELESAI] PDF TTS: tombol close bar + kontrol notifikasi/lock screen
+- [SELESAI, menunggu konfirmasi tes terakhir] Audio Player Tahap A: redesain UI neumorphism
+- [PROSES] Audio Player Tahap B: playlist custom (sudah cek AppDatabase.kt/FileDao.kt, belum tulis PlaylistEntity/DAO)
+- [BELUM] Audio Player Tahap C: lirik dari tag ID3 USLT
 
 ## Menunggu Keputusan User
+- (kosong saat ini - semua blocker per 8 Sept sudah dijawab)
 
-- Hapus atau tidak kartu "Favorit" dari grid Beranda (dobel dengan menu Favorit di drawer)
-- Siapa yang pegang fitur Analisis (Semua Partisi/File Besar/Duplikat/dll) - saat ini belum ada yang ditugaskan
+## Belum Ada yang Pegang
+- Fitur Analisis (Semua Partisi/File Besar/Berkas Terbaru/Folder Kosong/File Redundan/File Duplikat/Keranjang Sampah) - baru tampilan kosong tanpa fungsi
+- Ikon aplikasi baru & penomoran versi app - khusus dipegang hz11/user sendiri

@@ -21,8 +21,15 @@ App Android pengganti beberapa app reader/editor: baca & edit banyak jenis file 
 
 ## Sedang Dikerjakan
 
-- **hz25 - Tugas 2**: sistem clipboard/file-ops terpadu (`FileActionSheet`) - salin/potong/hapus/ganti nama/bagikan/properti file, dipanggil dari titik tiga di semua konten (list & grid thumbnail). Menggabungkan scope yang sebelumnya dipegang hz21 (multi-select Direktori). Urutan kerja: FileDao dulu (deleteByPath/renamePath) -> FileClipboard.kt -> FileActionSheet.kt -> sambung ke FileRow & VideoThumbnail -> tombol Tempel di DirektoriScreen. ImageThumbnail (Gambar) ditunda sampai re-koordinasi dengan hz19.
-- **PDF page-turn**: sudah membaik/nyaman, tapi masih perlu perbaikan/polish kecil (belum tuntas 100%)
+Status pakai notasi [SELESAI]/[PROSES]/[BELUM] - detail lengkap ada di TODO.md, ringkasan di sini:
+
+- hz19: investigasi bug label bulan galeri Gambar [PROSES]
+- hz21: verifikasi visual final SettingsPanel Mode Baca [PROSES]
+- hz25: FileActionSheet (clipboard/file-ops) [BELUM], hapus kartu Favorit Beranda [BELUM]
+- ydiv2: Audio Player Tahap B playlist custom [PROSES]
+- PDF page-turn: sudah membaik/nyaman, tapi masih perlu polish kecil (belum tuntas 100%)
+
+Catatan: hz21 mengerjakan PDF SettingsPanel/Mode Baca (BUKAN Direktori/clipboard). hz25 memegang FileActionSheet independen, tidak ada penggabungan scope dengan hz21.
 
 ## Belum Dikerjakan / Rencana Berikutnya
 
