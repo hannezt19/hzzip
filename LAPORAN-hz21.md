@@ -20,3 +20,11 @@ Sesi ini: klarifikasi status SettingsPanel (Warna Latar/Kontras/Mode Baca) di Pd
 1. Lihat struktur drawer/callback di MainActivity.kt (baris ~60-100, ~200-260)
 2. Susun & jalankan patch: statusBarsPadding di CategoryHomeScreen & CategoryDetailScreen, contentPadding bawah di LazyColumn kategori, navigationBarsPadding di toggle Video, dan pindahkan hamburger jadi inline di sebelah search bar
 3. Build, konfirmasi ke user, baru laporkan ke hz11 untuk sinkronisasi TODO/STATUS/ROADMAP
+
+## Update - Konfirmasi Perbaikan (screenshot dari user)
+- Perbaikan padding/tata letak Beranda & layar kategori (dikerjakan hz11/hz25 setelah laporan di atas) SUDAH DIKONFIRMASI user via screenshot langsung di HP:
+  1. Hamburger di Beranda sudah tidak nabrak search bar lagi (reserved space, bukan overlay bebas)
+  2. Baris pertama list kategori (PDF/Excel/dll) sudah tidak ketiban hamburger
+  3. Toggle Terbaru/Folder sudah tidak ketutup navigation bar sistem
+- Ketiga poin blocker/temuan yang tercatat di laporan sesi sebelumnya (bagian "Blocker / Pertanyaan Terbuka" terkait Beranda & kategori) dinyatakan SELESAI oleh user, siap dilaporkan ke hz11 untuk sinkronisasi TODO.md/STATUS.md
+- Catatan: SettingsPanel (Warna Latar/Kontras/Mode Baca/TTS/ID) di PdfViewerScreen.kt MASIH belum dikonfirmasi terpisah - bukan bagian dari konfirmasi screenshot sesi ini
