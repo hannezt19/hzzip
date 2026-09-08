@@ -1,13 +1,16 @@
 # TODO - FileReaderApp
 
-> Update terakhir: sesi akun ke-2 sedang memperbaiki bug perpindahan halaman (page-turn) yang kurang smooth. Rencana fitur TTS, highlight warna, dan mode gambar fullscreen sudah dicatat di ROADMAP.md, belum mulai dikerjakan.
-> File ini isinya HANYA tugas yang paling dekat/mendesak (maksimal 5 poin). Rencana besar/jangka panjang ada di ROADMAP.md, bukan di sini.
-> Kalau file ini diupdate: hapus poin yang sudah selesai, tulis status terbaru di baris "Update terakhir" di atas.
+> Update terakhir (8 Sept, oleh hz11/koordinator): ditulis ulang total, isi lama (per 3 Sept) sudah usang.
+> File ini isinya HANYA tugas paling dekat/mendesak (maksimal 5 poin). Rencana besar ada di ROADMAP.md.
+> Kalau file ini diupdate: hapus poin yang sudah selesai, tulis status terbaru di baris ini.
 
 ## Sedang Dikerjakan / Berikutnya
-1. [ ] Fix bug: perpindahan halaman (page-turn) kurang smooth
-2. [ ] Fix bug zoom PDF - konten melebihi frame saat diperbesar
-3. [ ] Pilih & mulai salah satu dari 3 rencana fitur baru (TTS / highlight warna / mode gambar fullscreen) - lihat detail di ROADMAP.md
+
+1. [ ] **hz25** - Tugas 2: sistem `FileActionSheet` (clipboard salin/potong/hapus/ganti nama/properti file) - mulai dari FileDao, lalu FileClipboard, lalu FileActionSheet, sambung ke FileRow & VideoThumbnail, baru tombol Tempel di Direktori
+2. [ ] **ydiv2** - lanjut Tahap B playlist Audio (tabel Room baru, panel 2 tab) - cek dulu AppDatabase.kt/FileDao.kt biar tidak bentrok hz19
+3. [ ] Polish kecil bug PDF page-turn (belum tuntas 100%, tapi bukan prioritas mendesak)
 
 ## Menunggu Keputusan User
-- (kosongkan bagian ini kalau tidak ada yang perlu ditanyakan ke user)
+
+- Hapus atau tidak kartu "Favorit" dari grid Beranda (dobel dengan menu Favorit di drawer)
+- Siapa yang pegang fitur Analisis (Semua Partisi/File Besar/Duplikat/dll) - saat ini belum ada yang ditugaskan

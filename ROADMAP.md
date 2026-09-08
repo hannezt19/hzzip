@@ -1,58 +1,47 @@
 # Roadmap - FileReaderApp
 
-> Update terakhir: sesi akun ke-2 sedang memperbaiki bug perpindahan halaman (page-turn) yang kurang smooth. Di sesi lain (akun ini), dibahas & dicatat rencana 3 fitur baru (TTS, highlight warna, mode gambar fullscreen) di bagian "Rencana Fitur Baru" - BELUM ada kode yang dibuat untuk ketiganya, baru tahap perencanaan. Kalau lanjut dari sini: selesaikan dulu fix bug smooth page-turn, baru pilih salah satu dari rencana fitur baru untuk mulai dikerjakan.
-> Kalau file ini diupdate, tulis di baris "Update terakhir" di atas: apa yang baru selesai, biar sesi berikutnya (akun mana pun) langsung tahu titik pijaknya tanpa scroll riwayat chat.
+> Update terakhir (8 Sept, oleh hz11/koordinator): dokumen ini ditulis ulang total setelah drift besar dari versi 3 Sept - banyak fitur yang tercatat "belum dikerjakan" ternyata sudah selesai (TTS, Mode Baca, dll), dan sebaliknya. Kalau file ini diupdate lagi: tulis di baris ini apa yang baru berubah, biar sesi berikutnya (akun mana pun) langsung tahu titik pijaknya.
 
 ## Tujuan Proyek
-App Android pengganti beberapa app reader/editor: baca & edit banyak jenis file (PDF, xlsx, gambar, JSON/HTML/JS/TXT/CSS), dengan tampilan konsisten di berbagai perangkat & versi Android (target minSdk 28). Device utama: Motorola Moto G45 (RAM kecil, jadi semua keputusan teknis prioritaskan ringan).
 
-## Tahap Selesai
-- **Tahap 0**: Keystore signing permanen (APK release, update tanpa uninstall) ✅
-- **Tahap 1**: Izin All Files Access, scan otomatis, Room DB, Beranda dasar (search/filter/list), bottom navbar (Beranda/Terakhir/Pengaturan) ✅
-- **Tahap 2**: PDF Reader - swipe ala buku, pinch-zoom, back button ke Beranda, indikator halaman (pojok kanan atas) ✅
-- **Tahap 3**: Image Viewer (pinch-zoom, pan, double-tap) ✅ | xlsx versi dasar (lihat/edit sel/simpan, formula ditampilkan sebagai teks belum dihitung) ✅ | pptx belum dikerjakan
-- **Redesain Beranda** (Material You -> revisi ala "One Read"): kartu kategori warna beda per jenis, ikon kiri, layout rapat, kartu Direktori (info penyimpanan), kartu Favorit ✅
-- **Sistem Favorit**: FavoritesStore.kt (SharedPreferences, terpisah dari DB file biar gak kereset scan ulang) + tombol bintang di semua viewer (PDF/Gambar/Excel/Teks-Kode) ✅
-- **Bug kartu "Gambar" 0 file di Beranda**: diperbaiki (tambah ekstensi jpg/jpeg/png/webp/gif ke FileScanner.kt) ✅
-- **Dark theme toggle** di Pengaturan (ThemeStore.kt + MaterialTheme dinamis) ✅
-- **OCR untuk PDF hasil scan**: fondasi selesai dibangun - ML Kit Text Recognition v2 (on-device), diproses sekali di background (bukan realtime per halaman), deteksi otomatis PDF butuh OCR (cek text layer dulu), hasil OCR ditampilkan di mode terpisah ("Lihat sebagai teks") di PdfViewerScreen ✅
+App Android pengganti beberapa app reader/editor: baca & edit banyak jenis file (PDF, xlsx, gambar, video, audio, JSON/HTML/JS/TXT/CSS), dengan tampilan konsisten. Device utama: Motorola Moto G45 (RAM kecil, jadi semua keputusan teknis prioritaskan ringan). minSdk 34.
+
+## Tahap Selesai (ringkas - detail teknis ada di STATUS.md)
+
+- **Fondasi**: Keystore signing permanen, izin All Files Access, scan otomatis (sekarang incremental, bukan replace-total), Room DB, Beranda (kartu kategori bulat, search, storage info)
+- **Navigasi app**: drawer/hamburger 3/4 layar menggantikan bottom nav bar lama, Pengaturan jadi accordion di drawer, layar kategori full-screen tanpa TopAppBar
+- **PDF**: swipe ala buku, pinch-zoom (bug frame fix), OCR (ML Kit v2), mode baca 3-tingkat, page grid navigasi cepat, Text-to-Speech lengkap (translate ID + kontrol notifikasi/lock screen)
+- **Gambar**: viewer (pinch-zoom/pan/double-tap), galeri Paging3 per-bulan, toggle Terbaru/Folder
+- **Video**: player ExoPlayer/Media3 gesture lengkap, galeri grid dengan toggle Terbaru/Folder (drill-down 2 tingkat)
+- **Audio**: player background penuh (notifikasi/lock screen), UI neumorphism dengan cover album otomatis
+- **Excel (xlsx)**: lihat/edit sel/simpan (parser+writer sendiri)
+- **Toggle Terbaru/Folder**: berlaku di semua kategori KECUALI Audio
+- **Sistem Favorit**: tombol bintang di semua viewer (FavoritesStore terpisah dari DB scan)
+- **Dark theme toggle**
 
 ## Sedang Dikerjakan
-- Fix bug: perpindahan halaman (page-turn) yang kurang smooth
 
-## Belum Dikerjakan (dari dokumen "Rencana Pengembangan Ebook Reader")
-1. Fix bug zoom PDF - konten melebihi frame saat diperbesar
-2. Mode E-ink (background putih pucat/sepia, font serif, kontras tinggi, transisi halaman instan)
-3. Panel pengaturan baca (kecerahan in-app, mode halaman vertikal/horizontal/ganda, tema warna latar)
-4. Mode reflow teks (font besar + auto word-wrap, butuh PDF dibaca sebagai text layer)
-5. Pengaturan jarak baris & margin, pilihan jenis font
-6. Layar tetap nyala saat baca, kunci orientasi layar
-7. Animasi ganti halaman ala membuka lembaran kertas
-8. Translate teks + koreksi tata bahasa
-9. Text-to-speech (lihat detail di "Rencana Fitur Baru" di bawah)
-10. Pencarian dalam dokumen (highlight + indikator hasil ala Dropbox)
-11. Highlight & catatan pribadi (lihat detail di "Rencana Fitur Baru" di bawah)
-12. Lanjut baca cepat ke buku/file terakhir dibuka
-13. pptx (PowerPoint) viewer
-14. Formula aktif di xlsx (Tahap C, ditunda karena jarang dipakai)
+- **hz25 - Tugas 2**: sistem clipboard/file-ops terpadu (`FileActionSheet`) - salin/potong/hapus/ganti nama/bagikan/properti file, dipanggil dari titik tiga di semua konten (list & grid thumbnail). Menggabungkan scope yang sebelumnya dipegang hz21 (multi-select Direktori). Urutan kerja: FileDao dulu (deleteByPath/renamePath) -> FileClipboard.kt -> FileActionSheet.kt -> sambung ke FileRow & VideoThumbnail -> tombol Tempel di DirektoriScreen. ImageThumbnail (Gambar) ditunda sampai re-koordinasi dengan hz19.
+- **PDF page-turn**: sudah membaik/nyaman, tapi masih perlu perbaikan/polish kecil (belum tuntas 100%)
 
-## Rencana Fitur Baru (hasil diskusi, belum dikerjakan)
+## Belum Dikerjakan / Rencana Berikutnya
 
-### TTS (Text-to-Speech)
-- Kartu mengambang di atas teks: cuplikan kalimat yang sedang dibacakan + tombol mundur/play/maju/tutup (X)
-- Panel player di bagian bawah layar: slider Volume, Pitch(Tone), Speed (masing-masing dengan tombol +/- dan reset), plus tombol play/pause/prev/next/pengaturan
-- Teks yang sedang dibacakan di-highlight warna abu-abu di badan teks, sinkron dengan posisi baca
+### Prioritas dekat
+1. Playlist Audio (ydiv2 - Tahap B): tabel Room baru (path+urutan lagu), panel 2 tab "Playlist"/"Semua Audio", direncanakan sebagai bottom sheet dari bawah (gaya Spotify), BUKAN drawer dari samping
+2. Lirik Audio dari tag ID3 USLT (ydiv2 - Tahap C), diakses gestur geser di layar pemutar
+3. Multi-select (tap-tahan pilih banyak file sekaligus) - tahap lanjutan dari FileActionSheet, ditunda sampai single-file actions stabil
 
-### Highlight Teks dengan Pilihan Warna
-- Tap-hold pilih teks memunculkan toolbar mengambang: beberapa pilihan warna highlight (minimal 4-5 warna)
-- Toolbar juga berisi tombol: Copy, Highlight, Note, Dict. (kamus), More (opsi tambahan)
-
-### Mode Gambar Fullscreen (untuk viewer yang berisi gambar+teks campuran, misal slide/galeri)
-- Gambar ditampilkan penuh layar: judul/label di atas, indikator halaman "x/y" di pojok, tombol expand
-- Gambar bisa di-pinch-zoom
-- Ukuran teks (untuk teks di bawah/sekitar gambar) diatur lewat modal pengaturan
-- Modal pengaturan dipanggil dengan 1x tap di layar
+### Belum ada yang pegang / ditunda
+- Fitur **Analisis** (menu: Semua Partisi, File Besar, Berkas Terbaru, Folder Kosong, File Redundan, File Duplikat, Keranjang Sampah) - baru tampilan kosong tanpa fungsi, scope belum ditugaskan ke siapa pun
+- Keputusan hapus/tidak kartu "Favorit" dari grid Beranda (dobel dengan menu Favorit di drawer) - masih pending konfirmasi final user
+- Bug lama: label bulan hilang di mode Terbaru galeri Gambar (cuma bulan berjalan yang ada headernya) - pernah dicoba diperbaiki, belum tuntas
+- Ikon aplikasi baru & penomoran versi app - khusus dipegang hz11/user sendiri (terkait keystore/signing), bukan scope akun lain
+- Panel pengaturan baca lanjutan (kecerahan in-app, mode halaman vertikal/horizontal/ganda), pencarian dalam dokumen PDF, highlight & catatan pribadi, lanjut baca cepat ke file terakhir, pptx viewer, formula aktif di xlsx - semua masih di tahap ide, belum ada yang mulai
 
 ## Referensi Desain
-- App "One Read": text selection/highlight/copy, konversi file, kategori file, menu file lengkap (cetak, ganti nama, kompresi, gabung/pisah PDF, dll)
-- Google PDF Viewer: jadi acuan perilaku zoom yang benar (konten terkurung rapi, beda dari bug yang kita punya sekarang)
+
+- App "One Read": text selection/highlight/copy, konversi file, menu file lengkap
+- Google PDF Viewer: acuan perilaku zoom yang benar
+- Google Files: pola toggle Terbaru/Folder, gaya pill button
+- Samsung Music (versi lama): acuan redesain Audio Player
+- Spotify: acuan rencana playlist Audio (bottom sheet dari bawah)
