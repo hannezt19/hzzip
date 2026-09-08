@@ -3,6 +3,14 @@
 > Dikelola oleh hz11 (koordinator). Update terakhir: 8 Sept 2026 - pembagian kerja diperjelas ulang setelah koreksi scope hz21 (bukan Direktori, tapi PDF SettingsPanel) dan alih kepemilikan bug label-bulan ke hz19.
 > File ini isinya tugas AKTIF tiap akun + keputusan yang masih menunggu user. Rencana besar/jangka panjang ada di ROADMAP.md.
 
+## 🔴 URGENT - Build Rusak (prioritas di atas semua tugas lain)
+
+Build GitHub Actions GAGAL sejak push [hz11] 8 Sept (dokumentasi only, bukan penyebabnya - cuma kebetulan jadi push yang memicu build berikutnya): `AudioPlayerScreen.kt:241` dan `:271` - `Unresolved reference: clickable`. File ini wilayah **ydiv2**.
+
+Dugaan awal: import `androidx.compose.foundation.clickable` kelewat. TAPI ini BARU DUGAAN, belum diverifikasi - perlu dicek dulu isi file & konteks baris 241/271 sebelum dipatch (jangan asumsi cuma soal import, bisa saja penyebab lain). Kemungkinan besar terjadi karena sesi ydiv2 kehabisan token di tengah kerja Tahap A (redesain UI), bukan kelalaian.
+
+**Ini memblokir build `main` untuk SEMUA akun** sampai diperbaiki - begitu ydiv2 aktif lagi, ini didahulukan sebelum lanjut Tahap B (playlist).
+
 ## Pembagian Kerja Aktif
 
 ### hz19 - Kategori Gambar
