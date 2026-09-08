@@ -222,7 +222,7 @@ fun AudioPlayerScreen(filePath: String) {
 
         Text(
             cleanTitle(currentTitle.ifBlank { "Memuat..." }),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             color = TextDark,
             maxLines = 2,
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -253,7 +253,7 @@ fun AudioPlayerScreen(filePath: String) {
             Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(40.dp))
 
         Box(
             Modifier
@@ -279,15 +279,15 @@ fun AudioPlayerScreen(filePath: String) {
             ) {
                 IconButton(
                     onClick = { controller?.seekToPrevious() },
-                    modifier = Modifier.size(60.dp).softRaised(CircleShape, PlayerSurface)
+                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
                 ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(30.dp))
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(26.dp))
                 }
 
                 IconButton(
                     onClick = { if (isPlaying) controller?.pause() else controller?.play() },
                     modifier = Modifier
-                        .size(84.dp)
+                        .size(70.dp)
                         .softRaised(CircleShape, PlayerSurface)
                         .border(1.5.dp, PlayerAccentCyan.copy(alpha = 0.6f), CircleShape)
                 ) {
@@ -295,19 +295,19 @@ fun AudioPlayerScreen(filePath: String) {
                         if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Jeda" else "Putar",
                         tint = PlayerAccentCyan,
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(34.dp)
                     )
                 }
 
                 IconButton(
                     onClick = { controller?.seekToNext() },
-                    modifier = Modifier.size(60.dp).softRaised(CircleShape, PlayerSurface)
+                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
                 ) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(30.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(26.dp))
                 }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
     }
 }
