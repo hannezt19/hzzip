@@ -5,14 +5,18 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -40,6 +44,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
+import com.yohanes.filereader.data.PlaylistEntity
 import com.yohanes.filereader.ui.SortOption
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -108,10 +113,12 @@ private fun formatDuration(ms: Long): String {
     return "%d:%02d".format(minutes, seconds)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioPlayerScreen(filePath: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val playlistDao = remember { AppDatabase.getInstance(context).playlistDao() }
 
     var controller by remember { mutableStateOf<MediaController?>(null) }
     var sortOption by remember { mutableStateOf(SortOption.DATE_NEWEST) }
@@ -123,6 +130,13 @@ fun AudioPlayerScreen(filePath: String) {
     var duration by remember { mutableStateOf(0L) }
     var isUserSeeking by remember { mutableStateOf(false) }
     var albumArt by remember { mutableStateOf<Bitmap?>(null) }
+    var showPlaylistSheet by remember { mutableStateOf(false) }
+    var sheetTab by remember { mutableStateOf(0) }
+
+    val customPlaylistFlow = remember(playlistDao) { playlistDao.getAll() }
+    val customPlaylistEntries by customPlaylistFlow.collectAsState(initial = emptyList())
+    val fileByPath = remember(playlist) { playlist.associateBy { it.path } }
+    val customPlaylistPaths = remember(customPlaylistEntries) { customPlaylistEntries.map { it.path }.toSet() }
 
     suspend fun loadAndPlay(option: SortOption) {
         val dao = AppDatabase.getInstance(context).fileDao()
@@ -142,6 +156,21 @@ fun AudioPlayerScreen(filePath: String) {
                 .build()
         }
         controller?.setMediaItems(mediaItems, startIndex, 0L)
+        controller?.prepare()
+        controller?.play()
+    }
+
+    fun playFromCustomPlaylist(startIndex: Int) {
+        val mediaItems = customPlaylistEntries.mapNotNull { entry ->
+            val fe = fileByPath[entry.path] ?: return@mapNotNull null
+            MediaItem.Builder()
+                .setUri(Uri.fromFile(File(fe.path)))
+                .setMediaId(fe.path)
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(fe.name).build())
+                .build()
+        }
+        if (mediaItems.isEmpty()) return
+        controller?.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
         controller?.prepare()
         controller?.play()
     }
@@ -183,6 +212,75 @@ fun AudioPlayerScreen(filePath: String) {
 
     LaunchedEffect(currentMediaId) {
         albumArt = if (currentMediaId.isNotBlank()) loadAlbumArt(currentMediaId) else null
+    }
+
+    if (showPlaylistSheet) {
+        ModalBottomSheet(onDismissRequest = { showPlaylistSheet = false }) {
+            TabRow(selectedTabIndex = sheetTab) {
+                Tab(selected = sheetTab == 0, onClick = { sheetTab = 0 }, text = { Text("Playlist") })
+                Tab(selected = sheetTab == 1, onClick = { sheetTab = 1 }, text = { Text("Semua Audio") })
+            }
+            when (sheetTab) {
+                0 -> {
+                    if (customPlaylistEntries.isEmpty()) {
+                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("Playlist masih kosong. Tambah dari tab \"Semua Audio\".", color = TextDark.copy(alpha = 0.5f))
+                        }
+                    } else {
+                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                            items(customPlaylistEntries, key = { it.path }) { entry: PlaylistEntity ->
+                                val fe = fileByPath[entry.path]
+                                val displayName = cleanTitle(fe?.name ?: entry.path.substringAfterLast("/"))
+                                ListItem(
+                                    headlineContent = { Text(displayName, maxLines = 1, color = TextDark) },
+                                    trailingContent = {
+                                        IconButton(onClick = { scope.launch { playlistDao.removeByPath(entry.path) } }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Hapus dari playlist", tint = TextDark.copy(alpha = 0.5f))
+                                        }
+                                    },
+                                    modifier = Modifier.clickable {
+                                        val idx = customPlaylistEntries.indexOf(entry)
+                                        playFromCustomPlaylist(idx)
+                                        showPlaylistSheet = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                1 -> {
+                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                        items(playlist, key = { it.path }) { entity: FileEntity ->
+                            val inPlaylist = customPlaylistPaths.contains(entity.path)
+                            ListItem(
+                                headlineContent = { Text(cleanTitle(entity.name), maxLines = 1, color = TextDark) },
+                                trailingContent = {
+                                    IconButton(onClick = {
+                                        scope.launch {
+                                            if (inPlaylist) playlistDao.removeByPath(entity.path)
+                                            else playlistDao.addToEnd(entity.path)
+                                        }
+                                    }) {
+                                        Icon(
+                                            if (inPlaylist) Icons.Default.Check else Icons.Default.Add,
+                                            contentDescription = if (inPlaylist) "Sudah di playlist" else "Tambah ke playlist",
+                                            tint = if (inPlaylist) PlayerAccentCyan else TextDark.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.clickable {
+                                    val idx = playlist.indexOf(entity)
+                                    controller?.seekTo(idx, 0L)
+                                    controller?.play()
+                                    showPlaylistSheet = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 
     Column(
@@ -228,7 +326,7 @@ fun AudioPlayerScreen(filePath: String) {
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.weight(1f))
 
         val safeDuration = duration.coerceAtLeast(1L)
         Slider(
@@ -259,11 +357,12 @@ fun AudioPlayerScreen(filePath: String) {
             Modifier
                 .fillMaxWidth()
                 .softRaised(RoundedCornerShape(50), PlayerSurface)
-                .padding(vertical = 16.dp)
+                .padding(vertical = 12.dp)
         ) {
             IconButton(
                 onClick = {
-                    Toast.makeText(context, "Playlist segera hadir", Toast.LENGTH_SHORT).show()
+                    sheetTab = 0
+                    showPlaylistSheet = true
                 },
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -274,7 +373,7 @@ fun AudioPlayerScreen(filePath: String) {
 
             Row(
                 modifier = Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
