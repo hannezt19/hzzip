@@ -167,6 +167,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val selectedVideoFolderPath: StateFlow<String?> = _selectedVideoFolderPath
     fun selectVideoFolder(path: String?) { _selectedVideoFolderPath.value = path }
 
+    // Toggle Terbaru/Folder untuk kategori list biasa (PDF, Excel, Teks/Kode, Favorit).
+    // Disimpan per-kategori dalam Map, dinaikkan ke sini (bukan remember lokal) supaya
+    // tidak ter-reset saat composable dilepas total ketika viewer file dibuka.
+    private val _categoryGalleryMode = MutableStateFlow<Map<String, VideoGalleryMode>>(emptyMap())
+    val categoryGalleryMode: StateFlow<Map<String, VideoGalleryMode>> = _categoryGalleryMode
+    fun setCategoryGalleryMode(category: String, mode: VideoGalleryMode) {
+        _categoryGalleryMode.value = _categoryGalleryMode.value + (category to mode)
+    }
+
+    private val _selectedCategoryFolderPath = MutableStateFlow<Map<String, String?>>(emptyMap())
+    val selectedCategoryFolderPath: StateFlow<Map<String, String?>> = _selectedCategoryFolderPath
+    fun selectCategoryFolder(category: String, path: String?) {
+        _selectedCategoryFolderPath.value = _selectedCategoryFolderPath.value + (category to path)
+    }
+
     private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
 
     init {

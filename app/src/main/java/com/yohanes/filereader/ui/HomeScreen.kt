@@ -501,12 +501,14 @@ private fun CategoryDetailScreen(
                 onFileClick = onFileClick
             )
         } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                items(files) { file ->
-                    FileRow(file = file, onClick = { onFileClick(file) })
-                    Divider()
-                }
-            }
+            val categoryModes by viewModel.categoryGalleryMode.collectAsState()
+            val mode = categoryModes[category] ?: VideoGalleryMode.TERBARU
+            FileListWithModeToggle(
+                files = files,
+                mode = mode,
+                onModeChange = { viewModel.setCategoryGalleryMode(category, it) },
+                onFileClick = onFileClick
+            )
         }
     }
 }
