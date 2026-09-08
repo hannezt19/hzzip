@@ -20,6 +20,19 @@
 7. Setelah build sukses & APK diinstal di HP, baru lanjut ke tugas berikutnya
 8. Update ROADMAP.md/TODO.md/STATUS.md kalau ada progress atau keputusan baru
 
+## Laporan Progress Antar-Akun
+
+**Wajib**: setiap akun yang mengerjakan repo ini (hz11, hz19, hz21, hz25, ydiv2, dst) membuat file `LAPORAN-[nama-akun]-[tanggal].md` di root repo dan commit langsung ke repo (bukan cuma dikirim lewat chat masing-masing), setiap kali sebuah rencana kerja/tugas dikonfirmasi selesai oleh user (bukan cuma selesai nulis kode - harus sudah dikonfirmasi build sukses & dites di HP).
+
+Isi minimal laporan:
+- Apa yang selesai (per tugas/fase)
+- Commit terkait (pesan commit, kalau perlu hash lewat `git log`)
+- Keputusan desain yang diambil, terutama kalau menyimpang dari perintah awal
+- Pertanyaan/blocker yang perlu dikonfirmasi
+- Rencana selanjutnya
+
+Tujuan: semua akun bisa tahu progress & pembagian kerja akun lain langsung dari repo, tanpa perlu buka chat akun lain satu-satu.
+
 ## Repo & Environment
 - Repo: https://github.com/hannezt19/hzzip (nama folder lokal: FileReaderApp)
 - Dikerjakan sepenuhnya dari HP via Termux, tanpa Android Studio/laptop
