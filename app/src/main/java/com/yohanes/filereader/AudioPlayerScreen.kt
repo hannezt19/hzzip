@@ -6,12 +6,15 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,8 +48,10 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
+import com.yohanes.filereader.data.PlaylistDao
 import com.yohanes.filereader.data.PlaylistEntity
 import com.yohanes.filereader.ui.SortOption
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -114,7 +119,7 @@ private fun formatDuration(ms: Long): String {
     return "%d:%02d".format(minutes, seconds)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AudioPlayerScreen(filePath: String) {
     val context = LocalContext.current
@@ -131,8 +136,6 @@ fun AudioPlayerScreen(filePath: String) {
     var duration by remember { mutableStateOf(0L) }
     var isUserSeeking by remember { mutableStateOf(false) }
     var albumArt by remember { mutableStateOf<Bitmap?>(null) }
-    var showPlaylistSheet by remember { mutableStateOf(false) }
-    var sheetTab by remember { mutableStateOf(0) }
 
     val customPlaylistFlow = remember(playlistDao) { playlistDao.getAll() }
     val customPlaylistEntries by customPlaylistFlow.collectAsState(initial = emptyList())
@@ -215,20 +218,254 @@ fun AudioPlayerScreen(filePath: String) {
         albumArt = if (currentMediaId.isNotBlank()) loadAlbumArt(currentMediaId) else null
     }
 
-    if (showPlaylistSheet) {
-        ModalBottomSheet(onDismissRequest = { showPlaylistSheet = false }) {
-            TabRow(selectedTabIndex = sheetTab) {
-                Tab(selected = sheetTab == 0, onClick = { sheetTab = 0 }, text = { Text("Playlist") })
-                Tab(selected = sheetTab == 1, onClick = { sheetTab = 1 }, text = { Text("Semua Audio") })
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(PlayerBg)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) {
+        HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
+            when (page) {
+                0 -> PlaylistPage(
+                    playlist = playlist,
+                    customPlaylistEntries = customPlaylistEntries,
+                    customPlaylistPaths = customPlaylistPaths,
+                    fileByPath = fileByPath,
+                    playlistDao = playlistDao,
+                    scope = scope,
+                    isPlaying = isPlaying,
+                    onTogglePlay = { if (isPlaying) controller?.pause() else controller?.play() },
+                    onPrev = { controller?.seekToPrevious() },
+                    onNext = { controller?.seekToNext() },
+                    onOpenPlaylist = { scope.launch { pagerState.animateScrollToPage(0) } },
+                    onPlayCustom = { idx -> playFromCustomPlaylist(idx) },
+                    onPlayAll = { idx -> controller?.seekTo(idx, 0L); controller?.play() }
+                )
+                1 -> PlayerPage(
+                    albumArt = albumArt,
+                    title = cleanTitle(currentTitle.ifBlank { "Memuat..." }),
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    isPlaying = isPlaying,
+                    onSeekChange = { isUserSeeking = true; currentPosition = it.toLong() },
+                    onSeekFinished = { controller?.seekTo(currentPosition); isUserSeeking = false },
+                    onTogglePlay = { if (isPlaying) controller?.pause() else controller?.play() },
+                    onPrev = { controller?.seekToPrevious() },
+                    onNext = { controller?.seekToNext() },
+                    onOpenPlaylist = { scope.launch { pagerState.animateScrollToPage(0) } }
+                )
+                2 -> LyricsPage(
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    isPlaying = isPlaying,
+                    onSeekChange = { isUserSeeking = true; currentPosition = it.toLong() },
+                    onSeekFinished = { controller?.seekTo(currentPosition); isUserSeeking = false },
+                    onTogglePlay = { if (isPlaying) controller?.pause() else controller?.play() },
+                    onPrev = { controller?.seekToPrevious() },
+                    onNext = { controller?.seekToNext() },
+                    onOpenPlaylist = { scope.launch { pagerState.animateScrollToPage(0) } }
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun PlayerControlBar(
+    onTogglePlay: () -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onOpenPlaylist: () -> Unit,
+    isPlaying: Boolean
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .softRaised(RoundedCornerShape(50), PlayerSurface)
+            .padding(vertical = 12.dp)
+    ) {
+        IconButton(
+            onClick = onOpenPlaylist,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
+        ) {
+            Icon(Icons.Default.Menu, contentDescription = "Playlist", tint = TextDark.copy(alpha = 0.6f), modifier = Modifier.size(24.dp))
+        }
+
+        Row(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPrev, modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)) {
+                Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(26.dp))
+            }
+            IconButton(
+                onClick = onTogglePlay,
+                modifier = Modifier
+                    .size(70.dp)
+                    .softRaised(CircleShape, PlayerSurface)
+                    .border(1.5.dp, PlayerAccentCyan.copy(alpha = 0.6f), CircleShape)
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "Jeda" else "Putar",
+                    tint = PlayerAccentCyan,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+            IconButton(onClick = onNext, modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(26.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeekBarSection(
+    currentPosition: Long,
+    duration: Long,
+    onSeekChange: (Float) -> Unit,
+    onSeekFinished: () -> Unit
+) {
+    val safeDuration = duration.coerceAtLeast(1L)
+    Slider(
+        value = currentPosition.coerceIn(0L, safeDuration).toFloat(),
+        onValueChange = onSeekChange,
+        onValueChangeFinished = onSeekFinished,
+        valueRange = 0f..safeDuration.toFloat(),
+        colors = SliderDefaults.colors(
+            thumbColor = PlayerAccentCyan,
+            activeTrackColor = PlayerAccentCyan,
+            inactiveTrackColor = TextDark.copy(alpha = 0.15f)
+        )
+    )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
+        Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
+    }
+}
+
+@Composable
+private fun PlayerPage(
+    albumArt: Bitmap?,
+    title: String,
+    currentPosition: Long,
+    duration: Long,
+    isPlaying: Boolean,
+    onSeekChange: (Float) -> Unit,
+    onSeekFinished: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onOpenPlaylist: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(24.dp))
+
+        Box(
+            Modifier.size(280.dp).softRaised(CircleShape, PlayerSurface),
+            contentAlignment = Alignment.Center
+        ) {
+            if (albumArt != null) {
+                Image(
+                    bitmap = albumArt.asImageBitmap(),
+                    contentDescription = "Sampul album",
+                    modifier = Modifier.fillMaxSize().padding(6.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text("\u266A", fontSize = 64.sp, color = TextDark.copy(alpha = 0.25f))
+            }
+        }
+
+        Spacer(Modifier.height(28.dp))
+
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            color = TextDark,
+            maxLines = 2,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(Modifier.weight(1f))
+
+        SeekBarSection(currentPosition, duration, onSeekChange, onSeekFinished)
+
+        Spacer(Modifier.height(40.dp))
+
+        PlayerControlBar(onTogglePlay, onPrev, onNext, onOpenPlaylist, isPlaying)
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun LyricsPage(
+    currentPosition: Long,
+    duration: Long,
+    isPlaying: Boolean,
+    onSeekChange: (Float) -> Unit,
+    onSeekFinished: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onOpenPlaylist: () -> Unit
+) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text(
+                "Lirik akan hadir di tahap berikutnya",
+                color = TextDark.copy(alpha = 0.4f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        SeekBarSection(currentPosition, duration, onSeekChange, onSeekFinished)
+        Spacer(Modifier.height(20.dp))
+        PlayerControlBar(onTogglePlay, onPrev, onNext, onOpenPlaylist, isPlaying)
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun PlaylistPage(
+    playlist: List<FileEntity>,
+    customPlaylistEntries: List<PlaylistEntity>,
+    customPlaylistPaths: Set<String>,
+    fileByPath: Map<String, FileEntity>,
+    playlistDao: PlaylistDao,
+    scope: CoroutineScope,
+    isPlaying: Boolean,
+    onTogglePlay: () -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onOpenPlaylist: () -> Unit,
+    onPlayCustom: (Int) -> Unit,
+    onPlayAll: (Int) -> Unit
+) {
+    var sheetTab by remember { mutableStateOf(0) }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 16.dp)) {
+        TabRow(selectedTabIndex = sheetTab) {
+            Tab(selected = sheetTab == 0, onClick = { sheetTab = 0 }, text = { Text("Playlist") })
+            Tab(selected = sheetTab == 1, onClick = { sheetTab = 1 }, text = { Text("Semua Audio") })
+        }
+
+        Box(Modifier.weight(1f)) {
             when (sheetTab) {
                 0 -> {
                     if (customPlaylistEntries.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("Playlist masih kosong. Tambah dari tab \"Semua Audio\".", color = TextDark.copy(alpha = 0.5f))
                         }
                     } else {
-                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                        LazyColumn(Modifier.fillMaxSize()) {
                             items(customPlaylistEntries, key = { it.path }) { entry: PlaylistEntity ->
                                 val fe = fileByPath[entry.path]
                                 val displayName = cleanTitle(fe?.name ?: entry.path.substringAfterLast("/"))
@@ -240,9 +477,7 @@ fun AudioPlayerScreen(filePath: String) {
                                         }
                                     },
                                     modifier = Modifier.clickable {
-                                        val idx = customPlaylistEntries.indexOf(entry)
-                                        playFromCustomPlaylist(idx)
-                                        showPlaylistSheet = false
+                                        onPlayCustom(customPlaylistEntries.indexOf(entry))
                                     }
                                 )
                             }
@@ -250,7 +485,7 @@ fun AudioPlayerScreen(filePath: String) {
                     }
                 }
                 1 -> {
-                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                    LazyColumn(Modifier.fillMaxSize()) {
                         items(playlist, key = { it.path }) { entity: FileEntity ->
                             val inPlaylist = customPlaylistPaths.contains(entity.path)
                             ListItem(
@@ -270,144 +505,17 @@ fun AudioPlayerScreen(filePath: String) {
                                     }
                                 },
                                 modifier = Modifier.clickable {
-                                    val idx = playlist.indexOf(entity)
-                                    controller?.seekTo(idx, 0L)
-                                    controller?.play()
-                                    showPlaylistSheet = false
+                                    onPlayAll(playlist.indexOf(entity))
                                 }
                             )
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
-        }
-    }
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(PlayerBg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.height(24.dp))
-
-        Box(
-            Modifier
-                .size(280.dp)
-                .softRaised(CircleShape, PlayerSurface),
-            contentAlignment = Alignment.Center
-        ) {
-            val art = albumArt
-            if (art != null) {
-                Image(
-                    bitmap = art.asImageBitmap(),
-                    contentDescription = "Sampul album",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(6.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text("\u266A", fontSize = 64.sp, color = TextDark.copy(alpha = 0.25f))
-            }
         }
 
-        Spacer(Modifier.height(28.dp))
-
-        Text(
-            cleanTitle(currentTitle.ifBlank { "Memuat..." }),
-            style = MaterialTheme.typography.titleMedium,
-            color = TextDark,
-            maxLines = 2,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(Modifier.weight(1f))
-
-        val safeDuration = duration.coerceAtLeast(1L)
-        Slider(
-            value = currentPosition.coerceIn(0L, safeDuration).toFloat(),
-            onValueChange = {
-                isUserSeeking = true
-                currentPosition = it.toLong()
-            },
-            onValueChangeFinished = {
-                controller?.seekTo(currentPosition)
-                isUserSeeking = false
-            },
-            valueRange = 0f..safeDuration.toFloat(),
-            colors = SliderDefaults.colors(
-                thumbColor = PlayerAccentCyan,
-                activeTrackColor = PlayerAccentCyan,
-                inactiveTrackColor = TextDark.copy(alpha = 0.15f)
-            )
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
-            Text(formatDuration(duration), style = MaterialTheme.typography.bodySmall, color = TextDark.copy(alpha = 0.5f))
-        }
-
-        Spacer(Modifier.height(40.dp))
-
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .softRaised(RoundedCornerShape(50), PlayerSurface)
-                .padding(vertical = 12.dp)
-        ) {
-            IconButton(
-                onClick = {
-                    sheetTab = 0
-                    showPlaylistSheet = true
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
-            ) {
-                Icon(Icons.Default.Menu, contentDescription = "Playlist", tint = TextDark.copy(alpha = 0.6f), modifier = Modifier.size(24.dp))
-            }
-
-            Row(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { controller?.seekToPrevious() },
-                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
-                ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", tint = TextDark, modifier = Modifier.size(26.dp))
-                }
-
-                IconButton(
-                    onClick = { if (isPlaying) controller?.pause() else controller?.play() },
-                    modifier = Modifier
-                        .size(70.dp)
-                        .softRaised(CircleShape, PlayerSurface)
-                        .border(1.5.dp, PlayerAccentCyan.copy(alpha = 0.6f), CircleShape)
-                ) {
-                    Icon(
-                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Jeda" else "Putar",
-                        tint = PlayerAccentCyan,
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = { controller?.seekToNext() },
-                    modifier = Modifier.size(52.dp).softRaised(CircleShape, PlayerSurface)
-                ) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", tint = TextDark, modifier = Modifier.size(26.dp))
-                }
-            }
-        }
-
+        Spacer(Modifier.height(12.dp))
+        PlayerControlBar(onTogglePlay, onPrev, onNext, onOpenPlaylist, isPlaying)
         Spacer(Modifier.height(8.dp))
     }
 }
