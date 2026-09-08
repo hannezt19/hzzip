@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -198,9 +199,10 @@ fun ImageGalleryScreen(
 }
 
 @Composable
-private fun ModeToggleRow(mode: VideoGalleryMode, onModeChange: (VideoGalleryMode) -> Unit) {
+private fun BoxScope.ModeToggleRow(mode: VideoGalleryMode, onModeChange: (VideoGalleryMode) -> Unit) {
     Row(
         modifier = Modifier
+            .align(Alignment.BottomCenter)
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(bottom = 16.dp),
