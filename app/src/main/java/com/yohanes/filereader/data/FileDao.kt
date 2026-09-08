@@ -28,6 +28,16 @@ interface FileDao {
     @Query("DELETE FROM files WHERE path IN (:paths)")
     suspend fun deleteByPaths(paths: List<String>)
 
+    // Untuk hapus 1 file lewat FileActionSheet (beda dari deleteByPaths yang dipakai syncAll)
+    @Query("DELETE FROM files WHERE path = :path")
+    suspend fun deleteByPath(path: String)
+
+    // Update path & name sekaligus di database setelah file fisik berhasil di-rename.
+    // Rename file fisik (java.io.File.renameTo) dilakukan terpisah di luar DAO ini,
+    // fungsi ini cuma menyelaraskan data database supaya tetap akurat.
+    @Query("UPDATE files SET path = :newPath, name = :newName WHERE path = :oldPath")
+    suspend fun renamePath(oldPath: String, newPath: String, newName: String)
+
     @Transaction
     suspend fun syncAll(newFiles: List<FileEntity>) {
         val existing = getAllOnce().associateBy { it.path }
