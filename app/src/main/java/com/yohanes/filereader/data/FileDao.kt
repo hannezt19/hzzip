@@ -54,6 +54,11 @@ interface FileDao {
     @Query("SELECT * FROM files WHERE extension IN ('jpg','jpeg','png','webp','gif') ORDER BY lastModified DESC")
     fun getImagesPaged(): PagingSource<Int, FileEntity>
 
+    // Versi ringan (bukan paging) - cuma dipakai untuk pengelompokan per folder,
+    // datanya kecil (nama/path saja) jadi aman diambil sekaligus walau jumlah foto banyak.
+    @Query("SELECT * FROM files WHERE extension IN ('jpg','jpeg','png','webp','gif') ORDER BY lastModified DESC")
+    fun getImages(): Flow<List<FileEntity>>
+
     @Query("SELECT * FROM files WHERE extension IN ('mp4','mkv','webm','3gp','avi','mov') ORDER BY lastModified DESC")
     fun getVideos(): Flow<List<FileEntity>>
 

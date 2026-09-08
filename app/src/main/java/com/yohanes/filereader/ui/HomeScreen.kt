@@ -487,7 +487,18 @@ private fun CategoryDetailScreen(
                 Text("Tidak ada file di kategori ini")
             }
         } else if (category == "Gambar") {
-            ImageGalleryScreen(imagesFlow = viewModel.imagesPaged, onFileClick = onFileClick)
+            val images by viewModel.images.collectAsState()
+            val imageMode by viewModel.imageGalleryMode.collectAsState()
+            val selectedImageFolder by viewModel.selectedImageFolderPath.collectAsState()
+            ImageGalleryScreen(
+                imagesFlow = viewModel.imagesPaged,
+                images = images,
+                mode = imageMode,
+                onModeChange = { viewModel.setImageGalleryMode(it) },
+                selectedFolderPath = selectedImageFolder,
+                onFolderSelected = { viewModel.selectImageFolder(it) },
+                onFileClick = onFileClick
+            )
         } else if (category == "Video") {
             val videos by viewModel.videos.collectAsState()
             val videoMode by viewModel.videoGalleryMode.collectAsState()

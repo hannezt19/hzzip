@@ -154,6 +154,22 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val videos: StateFlow<List<FileEntity>> = dao.getVideos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Versi ringan (bukan paging) khusus untuk pengelompokan folder di mode Folder Gambar.
+    // Mode Terbaru Gambar tetap pakai imagesPaged (Paging3) yang sudah ada, tidak diubah.
+    val images: StateFlow<List<FileEntity>> = dao.getImages()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _imageGalleryMode = MutableStateFlow(VideoGalleryMode.TERBARU)
+    val imageGalleryMode: StateFlow<VideoGalleryMode> = _imageGalleryMode
+    fun setImageGalleryMode(mode: VideoGalleryMode) {
+        _imageGalleryMode.value = mode
+        if (mode == VideoGalleryMode.TERBARU) _selectedImageFolderPath.value = null
+    }
+
+    private val _selectedImageFolderPath = MutableStateFlow<String?>(null)
+    val selectedImageFolderPath: StateFlow<String?> = _selectedImageFolderPath
+    fun selectImageFolder(path: String?) { _selectedImageFolderPath.value = path }
+
     // Terbaru/Folder - dinaikkan ke sini (bukan remember lokal di VideoGalleryScreen)
     // supaya tidak ter-reset saat composable grid dilepas total ketika video diputar.
     private val _videoGalleryMode = MutableStateFlow(VideoGalleryMode.TERBARU)
