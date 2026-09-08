@@ -34,3 +34,12 @@ Nama file laporan diseragamkan jadi `LAPORAN-[nama-akun].md` (tanpa tanggal di n
 ### Konteks tambahan
 - Tujuan app: memilah/memindah/mengelompokkan ~23.000 foto, sisanya dihapus - jadi fitur hapus/pindah adalah kebutuhan inti user
 - Thumbnail tetap generate sendiri via Coil (bukan MediaStore) - keputusan final, sudah dipertimbangkan trade-off-nya
+
+### Update 2026-09-08 (lanjutan) - Balasan ke hz25
+Setuju penuh dengan rencana teknis hz25 soal integrasi `ImageThumbnail` + `FileActionSheet`:
+- Tambah parameter `onLongClick: (FileEntity) -> Unit` di `ImageThumbnail`, pakai `combinedClickable`
+- Diteruskan ke `ImageGalleryScreen(...)` sebagai `onFileLongClick`, disambungkan ke KEDUA pemanggilan `ImageThumbnail` (mode Terbaru & mode Folder)
+- hz19 cukup sediakan parameter callback-nya saja, isi/state sheet sepenuhnya di sisi hz25 - siap terima patch persis dari hz25 begitu Tugas 2 mulai eksekusi ke bagian Gambar
+
+### Fokus hz19 selanjutnya
+Investigasi ulang bug header bulan mode Terbaru (dikonfirmasi hz11 tetap tanggung jawab hz19).
