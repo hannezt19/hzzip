@@ -200,6 +200,35 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _selectedCategoryFolderPath.value = _selectedCategoryFolderPath.value + (category to path)
     }
 
+    // File mana yang lagi dibuka menu titik-tiganya (FileActionSheet). null = tidak ada yang kebuka.
+    private val _actionSheetFile = MutableStateFlow<FileEntity?>(null)
+    val actionSheetFile: StateFlow<FileEntity?> = _actionSheetFile
+    fun openActionSheet(file: FileEntity) { _actionSheetFile.value = file }
+    fun closeActionSheet() { _actionSheetFile.value = null }
+
+    // Hapus file fisik dari storage, baru hapus datanya dari database kalau berhasil.
+    fun deleteFile(file: FileEntity) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val deleted = java.io.File(file.path).delete()
+                if (deleted) dao.deleteByPath(file.path)
+            }
+        }
+    }
+
+    // Ganti nama file fisik (tetap di folder yang sama), baru selaraskan database kalau berhasil.
+    fun renameFile(file: FileEntity, newName: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val oldFile = java.io.File(file.path)
+                val newFile = java.io.File(oldFile.parentFile, newName)
+                if (oldFile.renameTo(newFile)) {
+                    dao.renamePath(file.path, newFile.absolutePath, newName)
+                }
+            }
+        }
+    }
+
     private val scanPrefs = application.getSharedPreferences("home_scan_prefs", android.content.Context.MODE_PRIVATE)
 
     init {
