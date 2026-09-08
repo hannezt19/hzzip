@@ -21,3 +21,7 @@ Perbaikan padding Beranda/kategori & toggle Video sudah dikonfirmasi selesai. Se
 2. Kalau perlu diubah jadi sejajar: lihat struktur drawer/callback di MainActivity.kt (baris ~60-100, ~200-260), lalu susun patch
 3. Verifikasi status visual final SettingsPanel - build & tes di HP, konfirmasi ke user
 4. Setelah semua terkonfirmasi, laporkan ringkasan ke hz11 untuk sinkronisasi TODO/STATUS/ROADMAP
+
+## Update [isi tanggal]
+- Konfirmasi: bug kartu "Gambar" 0 file SUDAH TIDAK RELEVAN — sekarang terdeteksi normal (22935 file), lihat screenshot terlampir.
+- Rekomendasi ke hz11: hapus poin ini dari TODO.md dan STATUS.md ("Bug Diketahui").
