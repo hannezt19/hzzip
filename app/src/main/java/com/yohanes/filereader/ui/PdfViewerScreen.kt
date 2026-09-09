@@ -1026,7 +1026,8 @@ private fun ZoomableImageBox(
 ) {
     var localZoom by remember { mutableFloatStateOf(1f) }
     val zoom = externalZoom ?: localZoom
-    fun setZoom(newZoom: Float) {
+    val liveZoom = rememberUpdatedState(zoom)
+    val liveSetZoom = rememberUpdatedState<(Float) -> Unit> { newZoom ->
         if (externalZoom != null && onExternalZoomChange != null) onExternalZoomChange(newZoom) else localZoom = newZoom
     }
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -1044,11 +1045,11 @@ private fun ZoomableImageBox(
                     do {
                         val event = awaitPointerEvent()
                         val isPinch = event.changes.size >= 2
-                        if (isPinch || zoom > 1f) {
+                        if (isPinch || liveZoom.value > 1f) {
                             val zoomChange = event.calculateZoom()
                             val panChange = event.calculatePan()
-                            val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
-                            setZoom(newZoom)
+                            val newZoom = (liveZoom.value * zoomChange).coerceIn(1f, 5f)
+                            liveSetZoom.value(newZoom)
                             val currentBmp = bitmap
                             if (newZoom > 1f && currentBmp != null && containerSize.width > 0 && containerSize.height > 0) {
                                 val containerW = containerSize.width.toFloat()
@@ -1083,12 +1084,12 @@ private fun ZoomableImageBox(
                 detectTapGestures(
                     onTap = { onTap() },
                     onDoubleTap = {
-                        if (zoom > 1f) {
-                            setZoom(1f)
+                        if (liveZoom.value > 1f) {
+                            liveSetZoom.value(1f)
                             offsetX = 0f
                             offsetY = 0f
                         } else {
-                            setZoom(2.5f)
+                            liveSetZoom.value(2.5f)
                         }
                     }
                 )
