@@ -163,6 +163,12 @@ fun ImageGalleryScreen(
                         is GalleryItem.Header -> GridItemSpan(maxLineSpan)
                         else -> GridItemSpan(1)
                     }
+                },
+                contentType = { index ->
+                    when (pagingItems.peek(index)) {
+                        is GalleryItem.Header -> "header"
+                        else -> "photo"
+                    }
                 }
             ) { index ->
                 when (val item = pagingItems[index]) {
