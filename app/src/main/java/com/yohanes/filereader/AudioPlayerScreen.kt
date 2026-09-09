@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -38,6 +37,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
@@ -48,6 +48,8 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
+import com.yohanes.filereader.data.LyricLine
+import com.yohanes.filereader.data.LyricsStore
 import com.yohanes.filereader.data.PlaylistDao
 import com.yohanes.filereader.data.PlaylistEntity
 import com.yohanes.filereader.ui.SortOption
@@ -240,7 +242,6 @@ fun AudioPlayerScreen(filePath: String) {
                     onTogglePlay = { if (isPlaying) controller?.pause() else controller?.play() },
                     onPrev = { controller?.seekToPrevious() },
                     onNext = { controller?.seekToNext() },
-                    onOpenPlaylist = { scope.launch { pagerState.animateScrollToPage(0) } },
                     onPlayCustom = { idx -> playFromCustomPlaylist(idx) },
                     onPlayAll = { idx -> controller?.seekTo(idx, 0L); controller?.play() }
                 )
@@ -254,10 +255,10 @@ fun AudioPlayerScreen(filePath: String) {
                     onSeekFinished = { controller?.seekTo(currentPosition); isUserSeeking = false },
                     onTogglePlay = { if (isPlaying) controller?.pause() else controller?.play() },
                     onPrev = { controller?.seekToPrevious() },
-                    onNext = { controller?.seekToNext() },
-                    onOpenPlaylist = { scope.launch { pagerState.animateScrollToPage(0) } }
+                    onNext = { controller?.seekToNext() }
                 )
                 2 -> LyricsPage(
+                    songPath = currentMediaId,
                     currentPosition = currentPosition,
                     duration = duration,
                     isPlaying = isPlaying,
@@ -265,8 +266,7 @@ fun AudioPlayerScreen(filePath: String) {
                     onSeekFinished = { controller?.seekTo(currentPosition); isUserSeeking = false },
                     onTogglePlay = { if (isPlaying) controller?.pause() else controller?.play() },
                     onPrev = { controller?.seekToPrevious() },
-                    onNext = { controller?.seekToNext() },
-                    onOpenPlaylist = { scope.launch { pagerState.animateScrollToPage(0) } }
+                    onNext = { controller?.seekToNext() }
                 )
             }
         }
@@ -278,24 +278,16 @@ private fun PlayerControlBar(
     onTogglePlay: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
-    onOpenPlaylist: () -> Unit,
     isPlaying: Boolean
 ) {
     Box(
         Modifier
             .fillMaxWidth()
             .softRaised(RoundedCornerShape(50), PlayerSurface)
-            .padding(vertical = 12.dp)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
-        IconButton(
-            onClick = onOpenPlaylist,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
-        ) {
-            Icon(Icons.Default.Menu, contentDescription = "Playlist", tint = TextDark.copy(alpha = 0.6f), modifier = Modifier.size(24.dp))
-        }
-
         Row(
-            modifier = Modifier.align(Alignment.Center),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -359,8 +351,7 @@ private fun PlayerPage(
     onSeekFinished: () -> Unit,
     onTogglePlay: () -> Unit,
     onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onOpenPlaylist: () -> Unit
+    onNext: () -> Unit
 ) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp),
@@ -400,7 +391,7 @@ private fun PlayerPage(
 
         Spacer(Modifier.height(40.dp))
 
-        PlayerControlBar(onTogglePlay, onPrev, onNext, onOpenPlaylist, isPlaying)
+        PlayerControlBar(onTogglePlay, onPrev, onNext, isPlaying)
 
         Spacer(Modifier.height(8.dp))
     }
@@ -408,6 +399,7 @@ private fun PlayerPage(
 
 @Composable
 private fun LyricsPage(
+    songPath: String,
     currentPosition: Long,
     duration: Long,
     isPlaying: Boolean,
@@ -415,20 +407,42 @@ private fun LyricsPage(
     onSeekFinished: () -> Unit,
     onTogglePlay: () -> Unit,
     onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onOpenPlaylist: () -> Unit
+    onNext: () -> Unit
 ) {
+    val context = LocalContext.current
+    var lyricLines by remember { mutableStateOf<List<LyricLine>?>(null) }
+
+    LaunchedEffect(songPath) {
+        lyricLines = if (songPath.isNotBlank()) {
+            withContext(Dispatchers.IO) { LyricsStore.readLyrics(context, songPath) }
+        } else null
+    }
+
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp)) {
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Text(
-                "Lirik akan hadir di tahap berikutnya",
-                color = TextDark.copy(alpha = 0.4f),
-                style = MaterialTheme.typography.bodyMedium
-            )
+            val lines = lyricLines
+            if (lines.isNullOrEmpty()) {
+                Text("Lirik tidak tersedia", color = TextDark.copy(alpha = 0.4f), style = MaterialTheme.typography.bodyMedium)
+            } else {
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    items(lines) { line ->
+                        Text(
+                            line.text.ifBlank { "\u266A" },
+                            color = TextDark.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                        )
+                    }
+                }
+            }
         }
         SeekBarSection(currentPosition, duration, onSeekChange, onSeekFinished)
         Spacer(Modifier.height(20.dp))
-        PlayerControlBar(onTogglePlay, onPrev, onNext, onOpenPlaylist, isPlaying)
+        PlayerControlBar(onTogglePlay, onPrev, onNext, isPlaying)
         Spacer(Modifier.height(8.dp))
     }
 }
@@ -445,7 +459,6 @@ private fun PlaylistPage(
     onTogglePlay: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
-    onOpenPlaylist: () -> Unit,
     onPlayCustom: (Int) -> Unit,
     onPlayAll: (Int) -> Unit
 ) {
@@ -515,7 +528,7 @@ private fun PlaylistPage(
         }
 
         Spacer(Modifier.height(12.dp))
-        PlayerControlBar(onTogglePlay, onPrev, onNext, onOpenPlaylist, isPlaying)
+        PlayerControlBar(onTogglePlay, onPrev, onNext, isPlaying)
         Spacer(Modifier.height(8.dp))
     }
 }
