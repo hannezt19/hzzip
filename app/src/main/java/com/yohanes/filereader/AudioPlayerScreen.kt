@@ -1,6 +1,7 @@
 package com.yohanes.filereader
 
 import android.content.ComponentName
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -23,6 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -51,6 +55,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.yohanes.filereader.data.AppDatabase
 import com.yohanes.filereader.data.FileEntity
+import com.yohanes.filereader.data.Id3UsltReader
 import com.yohanes.filereader.data.LyricLine
 import com.yohanes.filereader.data.LyricsStore
 import com.yohanes.filereader.data.PlaylistDao
@@ -62,6 +67,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.content.FileProvider
 import java.io.File
 
 private val PlayerBg = Color(0xFFEEEEF2)
@@ -170,8 +176,11 @@ fun AudioPlayerScreen(filePath: String) {
     }
 
     fun playFromCustomPlaylist(startIndex: Int) {
-        val mediaItems = customPlaylistEntries.mapNotNull { entry ->
-            val fe = fileByPath[entry.path] ?: return@mapNotNull null
+        // Filter dulu entry yang file-nya sudah tidak ketemu, BARU hitung index -
+        // supaya startIndex tetap sinkron dengan mediaItems (jangan geser gara-gara ada yang dibuang).
+        val validEntries = customPlaylistEntries.filter { fileByPath.containsKey(it.path) }
+        val mediaItems = validEntries.map { entry ->
+            val fe = fileByPath.getValue(entry.path)
             MediaItem.Builder()
                 .setUri(Uri.fromFile(File(fe.path)))
                 .setMediaId(fe.path)
@@ -179,7 +188,9 @@ fun AudioPlayerScreen(filePath: String) {
                 .build()
         }
         if (mediaItems.isEmpty()) return
-        controller?.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
+        val targetEntry = customPlaylistEntries.getOrNull(startIndex)
+        val adjustedIndex = validEntries.indexOf(targetEntry).takeIf { it >= 0 } ?: 0
+        controller?.setMediaItems(mediaItems, adjustedIndex.coerceIn(0, mediaItems.size - 1), 0L)
         controller?.prepare()
         controller?.play()
     }
@@ -419,7 +430,7 @@ private fun LyricsPage(
 
     LaunchedEffect(songPath) {
         val result = if (songPath.isNotBlank()) {
-            withContext(Dispatchers.IO) { LyricsStore.loadForSong(context, songPath) }
+            withContext(Dispatchers.IO) { LyricsStore.loadForSong(songPath) }
         } else null
         lyricLines = result?.lines
         isSynced = result?.synced ?: true
@@ -514,13 +525,18 @@ private fun PlaylistPage(
                         LazyColumn(Modifier.fillMaxSize()) {
                             items(customPlaylistEntries, key = { it.path }) { entry: PlaylistEntity ->
                                 val fe = fileByPath[entry.path]
-                                val displayName = cleanTitle(fe?.name ?: entry.path.substringAfterLast("/"))
+                                val fallbackName = fe?.name ?: entry.path.substringAfterLast("/")
                                 ListItem(
-                                    headlineContent = { Text(displayName, maxLines = 1, color = TextDark) },
+                                    leadingContent = { SongThumbnail(entry.path) },
+                                    headlineContent = { SongRowTitle(entry.path, fallbackName) },
                                     trailingContent = {
-                                        IconButton(onClick = { scope.launch { playlistDao.removeByPath(entry.path) } }) {
-                                            Icon(Icons.Default.Close, contentDescription = "Hapus dari playlist", tint = TextDark.copy(alpha = 0.5f))
-                                        }
+                                        SongOptionsMenu(
+                                            path = entry.path,
+                                            name = fallbackName,
+                                            sizeBytes = fe?.sizeBytes ?: 0L,
+                                            inPlaylist = true,
+                                            onToggleInPlaylist = { scope.launch { playlistDao.removeByPath(entry.path) } }
+                                        )
                                     },
                                     modifier = Modifier.clickable {
                                         onPlayCustom(customPlaylistEntries.indexOf(entry))
@@ -535,20 +551,21 @@ private fun PlaylistPage(
                         items(playlist, key = { it.path }) { entity: FileEntity ->
                             val inPlaylist = customPlaylistPaths.contains(entity.path)
                             ListItem(
-                                headlineContent = { Text(cleanTitle(entity.name), maxLines = 1, color = TextDark) },
+                                leadingContent = { SongThumbnail(entity.path) },
+                                headlineContent = { SongRowTitle(entity.path, entity.name) },
                                 trailingContent = {
-                                    IconButton(onClick = {
-                                        scope.launch {
-                                            if (inPlaylist) playlistDao.removeByPath(entity.path)
-                                            else playlistDao.addToEnd(entity.path)
+                                    SongOptionsMenu(
+                                        path = entity.path,
+                                        name = entity.name,
+                                        sizeBytes = entity.sizeBytes,
+                                        inPlaylist = inPlaylist,
+                                        onToggleInPlaylist = {
+                                            scope.launch {
+                                                if (inPlaylist) playlistDao.removeByPath(entity.path)
+                                                else playlistDao.addToEnd(entity.path)
+                                            }
                                         }
-                                    }) {
-                                        Icon(
-                                            if (inPlaylist) Icons.Default.Check else Icons.Default.Add,
-                                            contentDescription = if (inPlaylist) "Sudah di playlist" else "Tambah ke playlist",
-                                            tint = if (inPlaylist) PlayerAccentCyan else TextDark.copy(alpha = 0.5f)
-                                        )
-                                    }
+                                    )
                                 },
                                 modifier = Modifier.clickable {
                                     onPlayAll(playlist.indexOf(entity))
@@ -563,5 +580,129 @@ private fun PlaylistPage(
         Spacer(Modifier.height(12.dp))
         PlayerControlBar(onTogglePlay, onPrev, onNext, isPlaying)
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+private val titleCache = mutableMapOf<String, String>()
+
+private suspend fun resolveTitle(path: String, fallbackName: String): String {
+    titleCache[path]?.let { return it }
+    val resolved = withContext(Dispatchers.IO) { Id3UsltReader.readTitle(path) }
+        ?.takeIf { it.isNotBlank() }
+        ?: cleanTitle(fallbackName)
+    titleCache[path] = resolved
+    return resolved
+}
+
+private fun formatFileSize(bytes: Long): String {
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "%.0f KB".format(kb)
+    return "%.1f MB".format(kb / 1024.0)
+}
+
+@Composable
+private fun SongThumbnail(path: String) {
+    val art by produceState<Bitmap?>(initialValue = null, key1 = path) {
+        value = loadAlbumArt(path)
+    }
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(PlayerAccentCyan.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (art != null) {
+            Image(
+                bitmap = art!!.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = PlayerAccentCyan.copy(alpha = 0.6f),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SongRowTitle(path: String, fallbackName: String) {
+    val title by produceState(initialValue = cleanTitle(fallbackName), key1 = path) {
+        value = resolveTitle(path, fallbackName)
+    }
+    Text(title, maxLines = 1, color = TextDark)
+}
+
+@Composable
+private fun SongOptionsMenu(
+    path: String,
+    name: String,
+    sizeBytes: Long,
+    inPlaylist: Boolean,
+    onToggleInPlaylist: () -> Unit
+) {
+    val context = LocalContext.current
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { menuExpanded = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "Opsi lagu", tint = TextDark.copy(alpha = 0.5f))
+        }
+        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Info lagu") },
+                leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
+                onClick = { menuExpanded = false; showInfoDialog = true }
+            )
+            DropdownMenuItem(
+                text = { Text(if (inPlaylist) "Hapus dari Playlist" else "Tambahkan ke Playlist") },
+                leadingIcon = {
+                    Icon(if (inPlaylist) Icons.Default.Close else Icons.Default.Add, contentDescription = null)
+                },
+                onClick = { menuExpanded = false; onToggleInPlaylist() }
+            )
+            DropdownMenuItem(
+                text = { Text("Bagikan") },
+                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                onClick = {
+                    menuExpanded = false
+                    try {
+                        val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", File(path))
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "audio/*"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Bagikan lagu"))
+                    } catch (e: Exception) {
+                    }
+                }
+            )
+        }
+    }
+
+    if (showInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showInfoDialog = false }) { Text("Tutup") }
+            },
+            title = { Text("Info Lagu") },
+            text = {
+                Column {
+                    Text("Nama file: " + name)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Ukuran: " + formatFileSize(sizeBytes))
+                    Spacer(Modifier.height(4.dp))
+                    Text("Path: " + path)
+                }
+            }
+        )
     }
 }
