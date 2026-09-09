@@ -58,3 +58,6 @@ Tidak ada saat ini.
 ## Update terakhir: Checkpoint B - UI Playlist (thumbnail + judul asli + menu opsi)
 - [PROSES] PlaylistPage: tambah thumbnail kotak (reuse loadAlbumArt/albumArtCache), judul pakai resolveTitle() (tag TIT2, fallback cleanTitle), menu "..." 3 opsi (Info lagu/Hapus-Tambah Playlist/Bagikan pakai FileProvider yang sudah dikonfigurasi)
 - [BELUM] Testing manual di HP (thumbnail muncul, judul asli kebaca, share jalan tanpa crash)
+
+## Fix bug: judul & lagu tidak sinkron di tab Playlist
+- [SELESAI] playFromCustomPlaylist(): startIndex dulu dihitung dari customPlaylistEntries MENTAH, sementara mediaItems dibuang (mapNotNull) kalau file sudah tidak ketemu di fileByPath - bikin index geser & judul/lagu tidak sinkron begitu ada 1 entry "yatim" (path tercatat di playlist tapi file sudah dipindah/hilang). Fix: filter dulu baru hitung ulang index dari list yang sudah valid.

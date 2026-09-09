@@ -176,8 +176,11 @@ fun AudioPlayerScreen(filePath: String) {
     }
 
     fun playFromCustomPlaylist(startIndex: Int) {
-        val mediaItems = customPlaylistEntries.mapNotNull { entry ->
-            val fe = fileByPath[entry.path] ?: return@mapNotNull null
+        // Filter dulu entry yang file-nya sudah tidak ketemu, BARU hitung index -
+        // supaya startIndex tetap sinkron dengan mediaItems (jangan geser gara-gara ada yang dibuang).
+        val validEntries = customPlaylistEntries.filter { fileByPath.containsKey(it.path) }
+        val mediaItems = validEntries.map { entry ->
+            val fe = fileByPath.getValue(entry.path)
             MediaItem.Builder()
                 .setUri(Uri.fromFile(File(fe.path)))
                 .setMediaId(fe.path)
@@ -185,7 +188,9 @@ fun AudioPlayerScreen(filePath: String) {
                 .build()
         }
         if (mediaItems.isEmpty()) return
-        controller?.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
+        val targetEntry = customPlaylistEntries.getOrNull(startIndex)
+        val adjustedIndex = validEntries.indexOf(targetEntry).takeIf { it >= 0 } ?: 0
+        controller?.setMediaItems(mediaItems, adjustedIndex.coerceIn(0, mediaItems.size - 1), 0L)
         controller?.prepare()
         controller?.play()
     }
