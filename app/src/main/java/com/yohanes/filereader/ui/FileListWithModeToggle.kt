@@ -1,7 +1,9 @@
 package com.yohanes.filereader.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -46,7 +48,8 @@ fun FileListWithModeToggle(
     files: List<FileEntity>,
     mode: VideoGalleryMode,
     onModeChange: (VideoGalleryMode) -> Unit,
-    onFileClick: (FileEntity) -> Unit
+    onFileClick: (FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit
 ) {
     val items = remember(files, mode) {
         if (mode == VideoGalleryMode.TERBARU) {
@@ -82,7 +85,7 @@ fun FileListWithModeToggle(
                         )
                     }
                     is ListItem.Row -> {
-                        FileRowPublic(file = item.file, onClick = { onFileClick(item.file) })
+                        FileRowPublic(file = item.file, onClick = { onFileClick(item.file) }, onLongClick = { onFileLongClick(item.file) })
                         Divider()
                     }
                 }
@@ -128,13 +131,14 @@ private fun ModeTogglePill(label: String, selected: Boolean, onClick: () -> Unit
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FileRowPublic(file: FileEntity, onClick: () -> Unit) {
+private fun FileRowPublic(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .padding(16.dp, 12.dp)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {

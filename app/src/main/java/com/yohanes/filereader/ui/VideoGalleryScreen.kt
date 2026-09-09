@@ -2,7 +2,9 @@ package com.yohanes.filereader.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -54,7 +56,8 @@ fun VideoGalleryScreen(
     onModeChange: (VideoGalleryMode) -> Unit,
     selectedFolderPath: String?,
     onFolderSelected: (String?) -> Unit,
-    onFileClick: (FileEntity) -> Unit
+    onFileClick: (FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit
 ) {
     val folderGroups = remember(videos) {
         videos
@@ -90,7 +93,7 @@ fun VideoGalleryScreen(
                     contentPadding = PaddingValues(4.dp)
                 ) {
                     items(folder.videos, key = { it.path }) { file ->
-                        VideoThumbnail(file = file, onClick = { onFileClick(file) })
+                        VideoThumbnail(file = file, onClick = { onFileClick(file) }, onLongClick = { onFileLongClick(file) })
                     }
                 }
             }
@@ -108,7 +111,7 @@ fun VideoGalleryScreen(
                 contentPadding = PaddingValues(4.dp, 4.dp, 4.dp, 64.dp)
             ) {
                 items(flatVideos, key = { it.path }) { file ->
-                    VideoThumbnail(file = file, onClick = { onFileClick(file) })
+                    VideoThumbnail(file = file, onClick = { onFileClick(file) }, onLongClick = { onFileLongClick(file) })
                 }
             }
         } else {
@@ -217,15 +220,16 @@ private fun FolderThumbnail(folder: FolderGroup, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun VideoThumbnail(file: FileEntity, onClick: () -> Unit) {
+private fun VideoThumbnail(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
     Box(
         modifier = Modifier
             .padding(2.dp)
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)

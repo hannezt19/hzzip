@@ -4,7 +4,7 @@
 ## Fase Kerja
 - Toggle Terbaru/Folder untuk PDF/Excel/Teks-Kode/Favorit + perluasan ke Gambar - [SELESAI]
 - Hapus kartu "Favorit" dari grid Beranda - [SELESAI]
-- Tugas 2: sistem FileActionSheet (clipboard/file-ops) - [PROSES] (langkah 4b/5: FileRow + DirektoriScreen tersambung long-press ke FileActionSheet; FileListWithModeToggle & VideoThumbnail menyusul)
+- Tugas 2: sistem FileActionSheet (clipboard/file-ops) - [PROSES] (langkah 4c-4d/5: VideoThumbnail & FileListWithModeToggle tersambung long-click ke FileActionSheet - semua kategori kecuali Gambar sudah lengkap)
 
 ## Kesepakatan Baru dengan User
 - (kosong saat ini, semua sudah diserap hz11 ke TODO.md)

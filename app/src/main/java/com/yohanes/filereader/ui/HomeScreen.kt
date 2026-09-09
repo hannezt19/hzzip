@@ -523,7 +523,8 @@ private fun CategoryDetailScreen(
                 onModeChange = { viewModel.setVideoGalleryMode(it) },
                 selectedFolderPath = selectedVideoFolder,
                 onFolderSelected = { viewModel.selectVideoFolder(it) },
-                onFileClick = onFileClick
+                onFileClick = onFileClick,
+                onFileLongClick = onFileLongClick
             )
         } else {
             val categoryModes by viewModel.categoryGalleryMode.collectAsState()
@@ -532,7 +533,8 @@ private fun CategoryDetailScreen(
                 files = files,
                 mode = mode,
                 onModeChange = { viewModel.setCategoryGalleryMode(category, it) },
-                onFileClick = onFileClick
+                onFileClick = onFileClick,
+                onFileLongClick = onFileLongClick
             )
         }
     }
