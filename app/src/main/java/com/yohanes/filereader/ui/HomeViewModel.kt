@@ -206,26 +206,35 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun openActionSheet(file: FileEntity) { _actionSheetFile.value = file }
     fun closeActionSheet() { _actionSheetFile.value = null }
 
+    // Penanda "ada perubahan file dari luar Room" (hapus/rename/tempel manual di Direktori),
+    // dipakai DirektoriScreen untuk tahu kapan perlu baca ulang java.io.File.listFiles().
+    private val _fileOpsTick = MutableStateFlow(0)
+    val fileOpsTick: StateFlow<Int> = _fileOpsTick
+    fun notifyFileOpsChanged() { _fileOpsTick.value++ }
+
     // Hapus file fisik dari storage, baru hapus datanya dari database kalau berhasil.
     fun deleteFile(file: FileEntity) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                val deleted = java.io.File(file.path).delete()
-                if (deleted) dao.deleteByPath(file.path)
+            val deleted = withContext(Dispatchers.IO) {
+                val ok = java.io.File(file.path).delete()
+                if (ok) dao.deleteByPath(file.path)
+                ok
             }
+            if (deleted) notifyFileOpsChanged()
         }
     }
 
     // Ganti nama file fisik (tetap di folder yang sama), baru selaraskan database kalau berhasil.
     fun renameFile(file: FileEntity, newName: String) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            val renamed = withContext(Dispatchers.IO) {
                 val oldFile = java.io.File(file.path)
                 val newFile = java.io.File(oldFile.parentFile, newName)
-                if (oldFile.renameTo(newFile)) {
-                    dao.renamePath(file.path, newFile.absolutePath, newName)
-                }
+                val ok = oldFile.renameTo(newFile)
+                if (ok) dao.renamePath(file.path, newFile.absolutePath, newName)
+                ok
             }
+            if (renamed) notifyFileOpsChanged()
         }
     }
 

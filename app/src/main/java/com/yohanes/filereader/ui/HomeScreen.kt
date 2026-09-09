@@ -31,8 +31,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.yohanes.filereader.data.ClipboardOp
 import com.yohanes.filereader.data.FileClipboard
 import com.yohanes.filereader.data.FileEntity
+import androidx.compose.material.icons.filled.ContentPaste
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun HomeScreen(
@@ -55,6 +60,7 @@ fun HomeScreen(
 
     when {
         showDirektori -> DirektoriScreen(
+            viewModel = viewModel,
             onFileClick = onFileClick,
             onFileLongClick = onFileLongClick,
             onBack = { viewModel.closeDirektori() }
@@ -245,7 +251,12 @@ private fun categoryContentColor(name: String): androidx.compose.ui.graphics.Col
 }
 
 @Composable
-private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onFileLongClick: (FileEntity) -> Unit, onBack: () -> Unit) {
+private fun DirektoriScreen(
+    viewModel: HomeViewModel,
+    onFileClick: (FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit,
+    onBack: () -> Unit
+) {
     val rootPath = android.os.Environment.getExternalStorageDirectory().path
     var currentDir by remember { mutableStateOf(java.io.File(rootPath)) }
 
@@ -258,11 +269,18 @@ private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onFileLongClick: 
         }
     }
 
-    val entries = remember(currentDir) {
+    // fileOpsTick naik tiap ada hapus/rename/tempel - dipakai supaya listing folder
+    // baca ulang dari storage (java.io.File tidak reaktif seperti Room/Flow).
+    val fileOpsTick by viewModel.fileOpsTick.collectAsState()
+    val entries = remember(currentDir, fileOpsTick) {
         (currentDir.listFiles()?.toList() ?: emptyList())
             .sortedWith(compareByDescending<java.io.File> { it.isDirectory }.thenBy { it.name.lowercase() })
     }
 
+    val clipboardState by FileClipboard.state.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(4.dp, 8.dp),
@@ -344,6 +362,72 @@ private fun DirektoriScreen(onFileClick: (FileEntity) -> Unit, onFileLongClick: 
             }
         }
     }
+
+    if (!clipboardState.isEmpty) {
+        val cbFile = clipboardState.file
+        val cbOp = clipboardState.op
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp)
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.primary)
+                .clickable {
+                    if (cbFile != null && cbOp != null) {
+                        val sourceFile = java.io.File(cbFile.path)
+                        scope.launch {
+                            val success = withContext(Dispatchers.IO) {
+                                try {
+                                    val destFile = uniqueDestFile(currentDir, sourceFile.name)
+                                    when (cbOp) {
+                                        ClipboardOp.COPY -> {
+                                            sourceFile.copyTo(destFile)
+                                            true
+                                        }
+                                        ClipboardOp.CUT -> {
+                                            if (sourceFile.renameTo(destFile)) {
+                                                true
+                                            } else {
+                                                sourceFile.copyTo(destFile)
+                                                sourceFile.delete()
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            FileClipboard.clear()
+                            if (success) viewModel.notifyFileOpsChanged()
+                        }
+                    }
+                }
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+            Spacer(Modifier.width(8.dp))
+            Text("Tempel", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+    }
+}
+
+// Cari nama file yang belum dipakai di folder tujuan (tambah " (1)", " (2)", dst
+// kalau nama sudah ada) - supaya Tempel tidak menimpa file lain tanpa sengaja.
+private fun uniqueDestFile(dir: java.io.File, name: String): java.io.File {
+    var candidate = java.io.File(dir, name)
+    if (!candidate.exists()) return candidate
+    val dot = name.lastIndexOf('.')
+    val baseName = if (dot > 0) name.substring(0, dot) else name
+    val ext = if (dot > 0) name.substring(dot) else ""
+    var i = 1
+    while (candidate.exists()) {
+        candidate = java.io.File(dir, "$baseName ($i)$ext")
+        i++
+    }
+    return candidate
 }
 
 private val ANALISIS_MENU = listOf(
