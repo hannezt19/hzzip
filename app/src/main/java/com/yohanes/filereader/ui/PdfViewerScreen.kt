@@ -111,6 +111,8 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
 
     var modeBacaActive by remember { mutableStateOf(false) }
     var scrollZoom by remember { mutableFloatStateOf(1f) }
+    var scrollOffsetX by remember { mutableFloatStateOf(0f) }
+    var scrollOffsetY by remember { mutableFloatStateOf(0f) }
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
     var pageGridOpen by remember { mutableStateOf(false) }
@@ -328,7 +330,10 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                         pageIndex = pageIndex,
                                         onTap = { settingsModalOpen = true },
                                         sharedZoom = scrollZoom,
-                                        onSharedZoomChange = { scrollZoom = it }
+                                        onSharedZoomChange = { scrollZoom = it },
+                                        sharedOffsetX = scrollOffsetX,
+                                        sharedOffsetY = scrollOffsetY,
+                                        onSharedOffsetChange = { x, y -> scrollOffsetX = x; scrollOffsetY = y }
                                     )
                                     if (pageIndex < pageCount - 1) {
                                         HorizontalDivider(
@@ -1022,7 +1027,10 @@ private fun ZoomableImageBox(
     onTap: () -> Unit,
     externalZoom: Float? = null,
     onExternalZoomChange: ((Float) -> Unit)? = null,
-    clipOwnBounds: Boolean = true
+    clipOwnBounds: Boolean = true,
+    externalOffsetX: Float? = null,
+    externalOffsetY: Float? = null,
+    onExternalOffsetChange: ((Float, Float) -> Unit)? = null
 ) {
     var localZoom by remember { mutableFloatStateOf(1f) }
     val zoom = externalZoom ?: localZoom
@@ -1030,8 +1038,15 @@ private fun ZoomableImageBox(
     val liveSetZoom = rememberUpdatedState<(Float) -> Unit> { newZoom ->
         if (externalZoom != null && onExternalZoomChange != null) onExternalZoomChange(newZoom) else localZoom = newZoom
     }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    var localOffsetX by remember { mutableFloatStateOf(0f) }
+    var localOffsetY by remember { mutableFloatStateOf(0f) }
+    val offsetX = externalOffsetX ?: localOffsetX
+    val offsetY = externalOffsetY ?: localOffsetY
+    val liveOffsetX = rememberUpdatedState(offsetX)
+    val liveOffsetY = rememberUpdatedState(offsetY)
+    fun setOffset(newX: Float, newY: Float) {
+        if (externalOffsetX != null && onExternalOffsetChange != null) onExternalOffsetChange(newX, newY) else { localOffsetX = newX; localOffsetY = newY }
+    }
     var containerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     Box(
@@ -1069,11 +1084,11 @@ private fun ZoomableImageBox(
                                 val scaledH = fittedH * newZoom
                                 val maxOffsetX = ((scaledW - containerW) / 2f).coerceAtLeast(0f)
                                 val maxOffsetY = ((scaledH - containerH) / 2f).coerceAtLeast(0f)
-                                offsetX = (offsetX + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
-                                offsetY = (offsetY + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                val newOffsetX = (liveOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                val newOffsetY = (liveOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                setOffset(newOffsetX, newOffsetY)
                             } else {
-                                offsetX = 0f
-                                offsetY = 0f
+                                setOffset(0f, 0f)
                             }
                             event.changes.forEach { it.consume() }
                         }
@@ -1086,8 +1101,7 @@ private fun ZoomableImageBox(
                     onDoubleTap = {
                         if (liveZoom.value > 1f) {
                             liveSetZoom.value(1f)
-                            offsetX = 0f
-                            offsetY = 0f
+                            setOffset(0f, 0f)
                         } else {
                             liveSetZoom.value(2.5f)
                         }
@@ -1116,7 +1130,7 @@ private fun ZoomableImageBox(
 }
 
 @Composable
-private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float, onSharedZoomChange: (Float) -> Unit) {
+private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float, onSharedZoomChange: (Float) -> Unit, sharedOffsetX: Float, sharedOffsetY: Float, onSharedOffsetChange: (Float, Float) -> Unit) {
     val context = LocalContext.current
     var aspect by remember(pageIndex) { mutableFloatStateOf(0.7071f) }
 
@@ -1138,13 +1152,16 @@ private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoo
             pageIndex = pageIndex,
             onTap = onTap,
             sharedZoom = sharedZoom,
-            onSharedZoomChange = onSharedZoomChange
+            onSharedZoomChange = onSharedZoomChange,
+            sharedOffsetX = sharedOffsetX,
+            sharedOffsetY = sharedOffsetY,
+            onSharedOffsetChange = onSharedOffsetChange
         )
     }
 }
 
 @Composable
-private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null) {
+private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null, sharedOffsetX: Float? = null, sharedOffsetY: Float? = null, onSharedOffsetChange: ((Float, Float) -> Unit)? = null) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
@@ -1186,7 +1203,10 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZ
         onTap = onTap,
         externalZoom = sharedZoom,
         onExternalZoomChange = onSharedZoomChange,
-        clipOwnBounds = sharedZoom == null
+        clipOwnBounds = sharedZoom == null,
+        externalOffsetX = sharedOffsetX,
+        externalOffsetY = sharedOffsetY,
+        onExternalOffsetChange = onSharedOffsetChange
     )
 }
 
