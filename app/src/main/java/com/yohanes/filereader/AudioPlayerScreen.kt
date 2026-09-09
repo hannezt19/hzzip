@@ -13,6 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +39,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -418,23 +421,38 @@ private fun LyricsPage(
         } else null
     }
 
+    val lines = lyricLines
+    val listState = rememberLazyListState()
+    val activeIndex = remember(lines, currentPosition) {
+        lines?.indexOfLast { it.timeMs <= currentPosition } ?: -1
+    }
+
+    LaunchedEffect(activeIndex) {
+        if (activeIndex >= 0) {
+            listState.animateScrollToItem((activeIndex - 3).coerceAtLeast(0))
+        }
+    }
+
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp)) {
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            val lines = lyricLines
             if (lines.isNullOrEmpty()) {
                 Text("Lirik tidak tersedia", color = TextDark.copy(alpha = 0.4f), style = MaterialTheme.typography.bodyMedium)
             } else {
                 LazyColumn(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    contentPadding = PaddingValues(vertical = 160.dp)
                 ) {
-                    items(lines) { line ->
+                    itemsIndexed(lines) { index, line ->
+                        val isActive = index == activeIndex
                         Text(
                             line.text.ifBlank { "\u266A" },
-                            color = TextDark.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isActive) PlayerAccentCyan else TextDark.copy(alpha = 0.35f),
+                            style = if (isActive) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                         )
                     }
                 }
