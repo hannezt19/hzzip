@@ -28,4 +28,4 @@
 
 ## Belum Ada yang Pegang
 - Fitur Analisis (Semua Partisi/File Besar/Berkas Terbaru/Folder Kosong/File Redundan/File Duplikat/Keranjang Sampah) - baru tampilan kosong tanpa fungsi
-- Ikon aplikasi baru & penomoran versi app - khusus dipegang hz11/user sendiri
+- Penomoran versi app - khusus dipegang hz11/user sendiri
