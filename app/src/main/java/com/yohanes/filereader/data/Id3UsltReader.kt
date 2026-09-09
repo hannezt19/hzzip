@@ -3,13 +3,22 @@ package com.yohanes.filereader.data
 import java.io.RandomAccessFile
 
 /**
- * Pembaca frame USLT (lirik tertanam) dari header ID3v2 mentah - Android
- * tidak punya API bawaan untuk ini, jadi diparse manual dari byte file.
- * Cuma teks polos, TANPA info waktu (beda dari file .lrc privat kita).
+ * Pembaca frame ID3v2 mentah (USLT lirik & TIT2 judul asli) - Android
+ * tidak punya API bawaan untuk baca lirik, jadi diparse manual dari byte file.
  */
 object Id3UsltReader {
 
     fun readUslt(path: String): String? {
+        val frameData = readFrameRaw(path, "USLT") ?: return null
+        return parseUsltFrame(frameData)
+    }
+
+    fun readTitle(path: String): String? {
+        val frameData = readFrameRaw(path, "TIT2") ?: return null
+        return parseTextFrame(frameData)
+    }
+
+    private fun readFrameRaw(path: String, targetFrameId: String): ByteArray? {
         return try {
             RandomAccessFile(path, "r").use { raf ->
                 val header = ByteArray(10)
@@ -27,7 +36,7 @@ object Id3UsltReader {
                     if (readCount < 10) break
                     bytesRead += 10
 
-                    if (frameHeader[0] == 0.toByte()) break // sudah masuk area padding
+                    if (frameHeader[0] == 0.toByte()) break
 
                     val frameId = String(frameHeader, 0, 4, Charsets.ISO_8859_1)
                     val frameSize = if (majorVersion >= 4) {
@@ -40,10 +49,10 @@ object Id3UsltReader {
                     }
                     if (frameSize <= 0 || frameSize > tagSize) break
 
-                    if (frameId == "USLT") {
+                    if (frameId == targetFrameId) {
                         val frameData = ByteArray(frameSize)
                         raf.readFully(frameData)
-                        return parseUsltFrame(frameData)
+                        return frameData
                     } else {
                         raf.seek(raf.filePointer + frameSize)
                         bytesRead += frameSize
@@ -63,11 +72,7 @@ object Id3UsltReader {
             (b3.toInt() and 0x7F)
     }
 
-    private fun parseUsltFrame(data: ByteArray): String? {
-        if (data.size < 5) return null
-        val encodingByte = data[0].toInt() and 0xFF
-        val offset = 4 // 1 byte encoding + 3 byte kode bahasa
-        val isWide = encodingByte == 1 || encodingByte == 2
+    private fun charsetFor(encodingByte: Int): Pair<java.nio.charset.Charset, Boolean> {
         val charset = when (encodingByte) {
             0 -> Charsets.ISO_8859_1
             1 -> Charsets.UTF_16
@@ -75,6 +80,15 @@ object Id3UsltReader {
             3 -> Charsets.UTF_8
             else -> Charsets.ISO_8859_1
         }
+        val isWide = encodingByte == 1 || encodingByte == 2
+        return charset to isWide
+    }
+
+    private fun parseUsltFrame(data: ByteArray): String? {
+        if (data.size < 5) return null
+        val encodingByte = data[0].toInt() and 0xFF
+        val offset = 4
+        val (charset, isWide) = charsetFor(encodingByte)
 
         var descEnd = offset
         if (isWide) {
@@ -92,5 +106,13 @@ object Id3UsltReader {
 
         val lyricsBytes = data.copyOfRange(descEnd, data.size)
         return String(lyricsBytes, charset).trim().takeIf { it.isNotBlank() }
+    }
+
+    private fun parseTextFrame(data: ByteArray): String? {
+        if (data.size < 2) return null
+        val encodingByte = data[0].toInt() and 0xFF
+        val (charset, _) = charsetFor(encodingByte)
+        val textBytes = data.copyOfRange(1, data.size)
+        return String(textBytes, charset).trim(' ', '\u0000').trim().takeIf { it.isNotBlank() }
     }
 }

@@ -48,3 +48,9 @@ Tidak ada saat ini.
 3. **Tahap C3**: highlight baris berjalan + auto-scroll sinkron posisi lagu.
 4. **Tahap C4**: editor lirik mode Sederhana.
 5. **Tahap C5**: editor lirik mode Disinkronkan (tap-waktu sambil dengar, mini transport player).
+
+## Update terakhir: Checkpoint A - Tahap C Lirik & Judul Asli
+- [PROSES] Id3UsltReader.kt digeneralisasi + tambah readTitle() (frame TIT2)
+- [PROSES] LyricsStore.kt dirombak total - TIDAK PAKAI file .lrc privat lagi, sumber lirik murni dari tag USLT tertanam, deteksi otomatis pola [mm:ss.ss] di dalam teksnya (ala Musicolet)
+- [PROSES] Info: item URGENT build 'clickable' di TODO.md (8 Sept) SUDAH BASI - dicek ydiv2, import ada, gh run list nunjukkin 5 build terakhir main semua sukses. Mohon dihapus dari TODO.md.
+- [BELUM] Checkpoint B: UI PlaylistPage (thumbnail cover album + menu ... 4 opsi: Info lagu/Hapus/Tambah/Bagikan) + pakai readTitle() sebagai judul utama

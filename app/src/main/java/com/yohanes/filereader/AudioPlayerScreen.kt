@@ -419,7 +419,7 @@ private fun LyricsPage(
 
     LaunchedEffect(songPath) {
         val result = if (songPath.isNotBlank()) {
-            withContext(Dispatchers.IO) { LyricsStore.loadForSong(context, songPath) }
+            withContext(Dispatchers.IO) { LyricsStore.loadForSong(songPath) }
         } else null
         lyricLines = result?.lines
         isSynced = result?.synced ?: true
