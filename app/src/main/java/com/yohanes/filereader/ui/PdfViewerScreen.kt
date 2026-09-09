@@ -110,6 +110,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     val isFav = favorites.contains(favKey)
 
     var modeBacaActive by remember { mutableStateOf(false) }
+    var scrollZoom by remember { mutableFloatStateOf(1f) }
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
     var pageGridOpen by remember { mutableStateOf(false) }
@@ -325,7 +326,9 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                     ScrollPdfPage(
                                         uri = uri,
                                         pageIndex = pageIndex,
-                                        onTap = { settingsModalOpen = true }
+                                        onTap = { settingsModalOpen = true },
+                                        sharedZoom = scrollZoom,
+                                        onSharedZoomChange = { scrollZoom = it }
                                     )
                                     if (pageIndex < pageCount - 1) {
                                         HorizontalDivider(
@@ -1016,9 +1019,16 @@ private fun ReflowPage(
 private fun ZoomableImageBox(
     bitmap: Bitmap?,
     contentDescription: String,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    externalZoom: Float? = null,
+    onExternalZoomChange: ((Float) -> Unit)? = null,
+    clipOwnBounds: Boolean = true
 ) {
-    var zoom by remember { mutableFloatStateOf(1f) }
+    var localZoom by remember { mutableFloatStateOf(1f) }
+    val zoom = externalZoom ?: localZoom
+    fun setZoom(newZoom: Float) {
+        if (externalZoom != null && onExternalZoomChange != null) onExternalZoomChange(newZoom) else localZoom = newZoom
+    }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var containerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
@@ -1026,7 +1036,7 @@ private fun ZoomableImageBox(
     Box(
         Modifier
             .fillMaxSize()
-            .clipToBounds()
+            .then(if (clipOwnBounds) Modifier.clipToBounds() else Modifier)
             .onGloballyPositioned { coordinates -> containerSize = coordinates.size }
             .pointerInput(bitmap) {
                 awaitEachGesture {
@@ -1038,7 +1048,7 @@ private fun ZoomableImageBox(
                             val zoomChange = event.calculateZoom()
                             val panChange = event.calculatePan()
                             val newZoom = (zoom * zoomChange).coerceIn(1f, 5f)
-                            zoom = newZoom
+                            setZoom(newZoom)
                             val currentBmp = bitmap
                             if (newZoom > 1f && currentBmp != null && containerSize.width > 0 && containerSize.height > 0) {
                                 val containerW = containerSize.width.toFloat()
@@ -1074,11 +1084,11 @@ private fun ZoomableImageBox(
                     onTap = { onTap() },
                     onDoubleTap = {
                         if (zoom > 1f) {
-                            zoom = 1f
+                            setZoom(1f)
                             offsetX = 0f
                             offsetY = 0f
                         } else {
-                            zoom = 2.5f
+                            setZoom(2.5f)
                         }
                     }
                 )
@@ -1105,7 +1115,7 @@ private fun ZoomableImageBox(
 }
 
 @Composable
-private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
+private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float, onSharedZoomChange: (Float) -> Unit) {
     val context = LocalContext.current
     var aspect by remember(pageIndex) { mutableFloatStateOf(0.7071f) }
 
@@ -1121,18 +1131,19 @@ private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(aspect)
-            .clipToBounds()
     ) {
         ZoomablePdfPage(
             uri = uri,
             pageIndex = pageIndex,
-            onTap = onTap
+            onTap = onTap,
+            sharedZoom = sharedZoom,
+            onSharedZoomChange = onSharedZoomChange
         )
     }
 }
 
 @Composable
-private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
+private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
@@ -1171,7 +1182,10 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit) {
     ZoomableImageBox(
         bitmap = bitmap,
         contentDescription = "Halaman ${pageIndex + 1}",
-        onTap = onTap
+        onTap = onTap,
+        externalZoom = sharedZoom,
+        onExternalZoomChange = onSharedZoomChange,
+        clipOwnBounds = sharedZoom == null
     )
 }
 
