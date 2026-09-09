@@ -32,8 +32,11 @@
 - **Zoom PDF melebihi frame**: SUDAH FIX
 - **Label bulan hilang di mode Terbaru galeri Gambar**: header pemisah bulan cuma tampil untuk bulan berjalan, bulan lain fotonya tetap ada tapi headernya hilang - kepemilikan dipegang hz19, dugaan terbaru mengarah ke logika insertSeparators/Paging3, masih investigasi
 - **hamburger Beranda tidak sejajar 1 baris dengan search bar**: SUDAH DIPUTUSKAN user - kondisi sekarang (reserved space baris terpisah) sudah cukup, TIDAK perlu diubah
+- **Zoom PDF mode Scroll**: masih ada masalah "nyangkut"/numpuk saat 2 halaman kelihatan bersamaan - hz21 sedang perbaiki bertahap (5 tahap, tahap 5 baru push), belum terverifikasi tuntas di HP
 
 ## Keputusan Desain Tambahan (8 Sept)
 
 - **Sistem koordinasi proyek**: hz11 sebagai koordinator/router murni, 4 akun eksekutor kerja paralel-bergantian. Alur: user eksekusi langsung dengan eksekutor -> user informasikan hasil ke hz11 -> hz11 update file acuan. Detail lengkap di CONVENTIONS.md & TODO.md.
-- **Kartu Favorit di grid Beranda**: DIKONFIRMASI FINAL akan dihapus (dobel dengan menu Favorit di drawer) - tugas dilimpahkan ke hz25
+- **Kartu Favorit di grid Beranda**: DIKONFIRMASI FINAL SUDAH DIHAPUS (dobel dengan menu Favorit di drawer) - tugas dilimpahkan ke hz25
+- **Navigasi Audio Player**: 3 halaman (Playlist|Pemutar|Lirik) via HorizontalPager swipe kiri-kanan, BUKAN bottom sheet dari bawah seperti rencana awal - alasan: bottom sheet kurang nyaman diakses (uji-coba langsung user), konsisten dengan pola HorizontalPager yang sudah dipakai PDF/galeri Gambar, dan hindari konflik gestur dengan drawer app (gestur tepi sudah dimatikan)
+- **Lirik Audio**: sumber dari tag ID3 USLT tertanam (bukan file .lrc terpisah) - deteksi otomatis pola timestamp dalam teks lirik ala Musicolet

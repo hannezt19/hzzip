@@ -1,33 +1,31 @@
 # TODO - FileReaderApp
 
-> Dikelola oleh hz11 (koordinator). Update terakhir: 8 Sept 2026 - cross-check ke kode & LAPORAN tiap akun via Termux (bukan cuma riwayat chat), beberapa item ternyata sudah tuntas dan dihapus, Tahap C ydiv2 ditulis ulang (ganti pendekatan).
+> Dikelola oleh hz11 (koordinator). Update terakhir: 8 Sept 2026 - cross-check ke branch tiap akun via Termux (git show), bukan cuma laporan di main yang sudah basi.
 > File ini isinya tugas AKTIF tiap akun + keputusan yang masih menunggu user. Rencana besar ada di ROADMAP.md.
-> PENTING: semua tugas di bawah dikerjakan di BRANCH masing-masing akun (bukan langsung main) - lihat CONVENTIONS.md.
-
-## 🔴 URGENT - Build Rusak (prioritas di atas semua tugas lain)
-
-Build GitHub Actions GAGAL: `AudioPlayerScreen.kt:241` dan `:271` - `Unresolved reference: clickable`. File ini wilayah **ydiv2**. Dugaan: import `androidx.compose.foundation.clickable` kelewat - BELUM diverifikasi, cek dulu sebelum patch. Memblokir build `main` untuk SEMUA akun - didahulukan begitu ydiv2 aktif.
+> PENTING: semua tugas dikerjakan di BRANCH masing-masing akun (bukan langsung main) - lihat CONVENTIONS.md.
 
 ## Pembagian Kerja Aktif
 
 ### hz19 - Kategori Gambar
-- [PROSES] Investigasi bug label bulan hilang di mode Terbaru galeri Gambar. 2 dugaan sudah dicoba dan TERBUKTI SALAH: (1) soal `File.lastModified()` vs EXIF, (2) soal `contentType`/daur-ulang slot Compose di `items()` grid - JANGAN ulangi dua ini, perlu sudut analisis baru
-- [BELUM] Sambungkan `onLongClick`/`combinedClickable` di `ImageThumbnail` (sudah disepakati polanya dengan hz25) - siap terima patch dari hz25 begitu Tugas 2 mulai ke bagian Gambar
+- [PROSES] Investigasi bug label bulan hilang mode Terbaru galeri Gambar. 2 dugaan TERBUKTI SALAH: (1) lastModified vs EXIF, (2) contentType/daur-ulang slot Compose - JANGAN ulangi, perlu sudut analisis baru
+- Sudah SETUJU pola integrasi FileActionSheet dari hz25 (onLongClick+combinedClickable di ImageThumbnail) - tidak ada tindakan lanjutan dari hz19, tinggal tunggu patch dari hz25
 
-### hz21 - PDF SettingsPanel / Mode Baca
-- [PROSES] Verifikasi visual final SettingsPanel (Warna Latar/Kontras/Mode Baca/TTS/ID di PdfViewerScreen.kt) - perlu build+tes di HP
+### hz21 - PDF (SettingsPanel + zoom mode Scroll)
+- [PROSES] Fix zoom PDF mode Scroll - 5 tahap (zoom seragam, fix tarik pinch, satukan pan, fix numpuk 2 halaman, satukan gesture detector) - tahap 5 baru push ke branch hz21, MENUNGGU build+tes di HP
+- [PROSES] Verifikasi visual final SettingsPanel (Warna Latar/Kontras/Mode Baca/TTS/ID) - kode sudah dicek benar, tinggal konfirmasi visual di HP
 
 ### hz25 - Video / Toggle Terbaru-Folder / FileActionSheet
-- [BELUM] Tugas 2: sistem FileActionSheet - urutan: FileDao (deleteByPath/renamePath) -> FileClipboard.kt -> FileActionSheet.kt -> sambung FileRow & VideoThumbnail -> tombol Tempel di DirektoriScreen. Pola integrasi ke ImageThumbnail (Gambar) sudah disepakati dengan hz19 (combinedClickable + callback onFileLongClick), siap eksekusi begitu sampai ke bagian itu
+- [SELESAI] Tugas 2: sistem FileActionSheet (clipboard salin/potong/hapus/ganti nama, properti file) - 5/5 langkah tuntas
+- [BELUM] Eksekusi integrasi FileActionSheet ke `ImageThumbnail` (Gambar) - hz19 SUDAH SETUJU pola yang diusulkan (parameter `onLongClick`, `combinedClickable`), tinggal hz25 kirim & jalankan patch-nya
 
 ### ydiv2 - PDF TTS / Audio Player
-- [PROSES] Tahap B: playlist custom (sudah cek AppDatabase.kt/FileDao.kt, belum tulis PlaylistEntity/DAO)
-- [BELUM] Tugas kecil sebelum lanjut Tahap C: hapus tombol ☰ dari PlayerControlBar (redundant, navigasi sudah lewat swipe)
-- [BELUM] Tahap C - Lirik Audio: PENDEKATAN DIGANTI TOTAL dari rencana awal (bukan lagi baca tag ID3 USLT) - sekarang pakai file `.lrc` (format `[mm:ss.ms] teks`) disimpan di penyimpanan PRIVAT khusus app (bukan folder publik, dikunci pakai path lagu), dibersihkan otomatis menumpang `FileDao.syncAll()`. Rencana sub-tahap: C2 (penyimpanan+parser+tampilan dasar), C3 (highlight+auto-scroll sinkron), C4 (editor mode Sederhana), C5 (editor mode Disinkronkan - tap-waktu sambil dengar lagu)
+- [PROSES] Checkpoint A - Tahap C Lirik: PENDEKATAN BERUBAH LAGI - bukan `.lrc` privat (rencana sebelumnya), BALIK ke tag ID3 USLT tertanam di file, deteksi otomatis pola `[mm:ss.ss]` di dalam teksnya (ala Musicolet). `Id3UsltReader.kt` digeneralisasi + tambah `readTitle()` (frame TIT2, judul asli lagu). `LyricsStore.kt` dirombak total.
+- [BELUM] Checkpoint B: UI PlaylistPage (thumbnail cover album + menu titik-tiga: Info lagu/Hapus/Tambah/Bagikan), pakai `readTitle()` sebagai judul utama
+- [BELUM] Tugas kecil: hapus tombol ☰ dari `PlayerControlBar` (redundant, navigasi sudah lewat swipe 3 halaman)
 
 ## Menunggu Keputusan User
 - (kosong saat ini)
 
 ## Belum Ada yang Pegang
 - Fitur Analisis (Semua Partisi/File Besar/Berkas Terbaru/Folder Kosong/File Redundan/File Duplikat/Keranjang Sampah) - baru tampilan kosong tanpa fungsi
-- Ikon aplikasi baru & penomoran versi app - khusus dipegang hz11/user sendiri
+- Penomoran versi app - khusus dipegang hz11/user sendiri
