@@ -78,6 +78,21 @@ object LyricsStore {
         return lines.sortedBy { it.timeMs }
     }
 
+    data class LyricsResult(val lines: List<LyricLine>, val synced: Boolean)
+
+    /** Cari lirik: coba file .lrc privat dulu (tersinkron), baru fallback ke tag USLT (polos, tanpa highlight). */
+    fun loadForSong(context: Context, songPath: String): LyricsResult? {
+        val synced = readLyrics(context, songPath)
+        if (!synced.isNullOrEmpty()) return LyricsResult(synced, true)
+
+        val usltText = Id3UsltReader.readUslt(songPath)
+        if (!usltText.isNullOrBlank()) {
+            val lines = usltText.lines().filter { it.isNotBlank() }.map { LyricLine(0L, it.trim()) }
+            if (lines.isNotEmpty()) return LyricsResult(lines, false)
+        }
+        return null
+    }
+
     fun formatLrc(lines: List<LyricLine>): String {
         return lines.sortedBy { it.timeMs }.joinToString("\n") { line ->
             val totalMs = line.timeMs

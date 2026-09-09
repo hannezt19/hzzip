@@ -415,16 +415,20 @@ private fun LyricsPage(
     val context = LocalContext.current
     var lyricLines by remember { mutableStateOf<List<LyricLine>?>(null) }
 
+    var isSynced by remember { mutableStateOf(true) }
+
     LaunchedEffect(songPath) {
-        lyricLines = if (songPath.isNotBlank()) {
-            withContext(Dispatchers.IO) { LyricsStore.readLyrics(context, songPath) }
+        val result = if (songPath.isNotBlank()) {
+            withContext(Dispatchers.IO) { LyricsStore.loadForSong(context, songPath) }
         } else null
+        lyricLines = result?.lines
+        isSynced = result?.synced ?: true
     }
 
     val lines = lyricLines
     val listState = rememberLazyListState()
-    val activeIndex = remember(lines, currentPosition) {
-        lines?.indexOfLast { it.timeMs <= currentPosition } ?: -1
+    val activeIndex = remember(lines, currentPosition, isSynced) {
+        if (isSynced) lines?.indexOfLast { it.timeMs <= currentPosition } ?: -1 else -1
     }
 
     LaunchedEffect(activeIndex) {
@@ -438,22 +442,33 @@ private fun LyricsPage(
             if (lines.isNullOrEmpty()) {
                 Text("Lirik tidak tersedia", color = TextDark.copy(alpha = 0.4f), style = MaterialTheme.typography.bodyMedium)
             } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    contentPadding = PaddingValues(vertical = 160.dp)
-                ) {
-                    itemsIndexed(lines) { index, line ->
-                        val isActive = index == activeIndex
+                Column(Modifier.fillMaxSize()) {
+                    if (!isSynced) {
                         Text(
-                            line.text.ifBlank { "\u266A" },
-                            color = if (isActive) PlayerAccentCyan else TextDark.copy(alpha = 0.35f),
-                            style = if (isActive) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                            "Lirik dari tag lagu (tidak tersinkron)",
+                            color = TextDark.copy(alpha = 0.4f),
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            textAlign = TextAlign.Center
                         )
+                    }
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        contentPadding = PaddingValues(vertical = if (isSynced) 160.dp else 8.dp)
+                    ) {
+                        itemsIndexed(lines) { index, line ->
+                            val isActive = isSynced && index == activeIndex
+                            Text(
+                                line.text.ifBlank { "\u266A" },
+                                color = if (isActive) PlayerAccentCyan else TextDark.copy(alpha = 0.7f),
+                                style = if (isActive) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                            )
+                        }
                     }
                 }
             }
