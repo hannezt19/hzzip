@@ -304,45 +304,105 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         }
                     }
                 } else {
-                    LazyColumn(
-                        state = scrollListState,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(pageCount) { pageIndex ->
-                            if (modeBacaActive) {
-                                ReflowPage(
-                                    uri = uri,
-                                    displayName = displayName,
-                                    pageCount = pageCount,
-                                    pageIndex = pageIndex,
-                                    settings = readerSettings,
-                                    translateActive = translateActive,
-                                    fillScreen = false,
-                                    onExpandImage = { imgs -> fullscreenImages = imgs },
-                                    onPrevPage = {},
-                                    onNextPage = {},
-                                    onTap = { settingsModalOpen = true }
-                                )
-                            } else {
-                                Column {
-                                    ScrollPdfPage(
+                    Box(Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            state = scrollListState,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(pageCount) { pageIndex ->
+                                if (modeBacaActive) {
+                                    ReflowPage(
                                         uri = uri,
+                                        displayName = displayName,
+                                        pageCount = pageCount,
                                         pageIndex = pageIndex,
-                                        onTap = { settingsModalOpen = true },
-                                        sharedZoom = scrollZoom,
-                                        onSharedZoomChange = { scrollZoom = it },
-                                        sharedOffsetX = scrollOffsetX,
-                                        sharedOffsetY = scrollOffsetY,
-                                        onSharedOffsetChange = { x, y -> scrollOffsetX = x; scrollOffsetY = y }
+                                        settings = readerSettings,
+                                        translateActive = translateActive,
+                                        fillScreen = false,
+                                        onExpandImage = { imgs -> fullscreenImages = imgs },
+                                        onPrevPage = {},
+                                        onNextPage = {},
+                                        onTap = { settingsModalOpen = true }
                                     )
-                                    if (pageIndex < pageCount - 1) {
-                                        HorizontalDivider(
-                                            thickness = 1.dp,
-                                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f)
+                                } else {
+                                    Column {
+                                        ScrollPdfPage(
+                                            uri = uri,
+                                            pageIndex = pageIndex,
+                                            onTap = { settingsModalOpen = true },
+                                            sharedZoom = scrollZoom,
+                                            onSharedZoomChange = { scrollZoom = it },
+                                            sharedOffsetX = scrollOffsetX,
+                                            sharedOffsetY = scrollOffsetY,
+                                            onSharedOffsetChange = { x, y -> scrollOffsetX = x; scrollOffsetY = y }
                                         )
+                                        if (pageIndex < pageCount - 1) {
+                                            HorizontalDivider(
+                                                thickness = 1.dp,
+                                                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f)
+                                            )
+                                        }
                                     }
                                 }
                             }
+                        }
+                        if (!modeBacaActive) {
+                            val liveScrollZoom = rememberUpdatedState(scrollZoom)
+                            val liveScrollOffsetX = rememberUpdatedState(scrollOffsetX)
+                            val liveScrollOffsetY = rememberUpdatedState(scrollOffsetY)
+                            var scrollContainerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .onGloballyPositioned { coordinates -> scrollContainerSize = coordinates.size }
+                                    .pointerInput(Unit) {
+                                        awaitEachGesture {
+                                            awaitFirstDown(requireUnconsumed = false)
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                val isPinch = event.changes.size >= 2
+                                                if (isPinch || liveScrollZoom.value > 1f) {
+                                                    val zoomChange = event.calculateZoom()
+                                                    val panChange = event.calculatePan()
+                                                    val newZoom = (liveScrollZoom.value * zoomChange).coerceIn(1f, 5f)
+                                                    scrollZoom = newZoom
+                                                    if (newZoom > 1f && scrollContainerSize.width > 0 && scrollContainerSize.height > 0) {
+                                                        val maxOffsetX = scrollContainerSize.width.toFloat() * (newZoom - 1f) / 2f
+                                                        val maxOffsetY = scrollContainerSize.height.toFloat() * (newZoom - 1f) / 2f
+                                                        val newOffsetX = (liveScrollOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                                        val newOffsetY = (liveScrollOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                                        val panMasihBisaGerak = newOffsetX != liveScrollOffsetX.value || newOffsetY != liveScrollOffsetY.value
+                                                        scrollOffsetX = newOffsetX
+                                                        scrollOffsetY = newOffsetY
+                                                        if (isPinch || panMasihBisaGerak) {
+                                                            event.changes.forEach { it.consume() }
+                                                        }
+                                                    } else {
+                                                        scrollOffsetX = 0f
+                                                        scrollOffsetY = 0f
+                                                        if (isPinch) {
+                                                            event.changes.forEach { it.consume() }
+                                                        }
+                                                    }
+                                                }
+                                            } while (event.changes.any { it.pressed })
+                                        }
+                                    }
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onTap = { settingsModalOpen = true },
+                                            onDoubleTap = {
+                                                if (liveScrollZoom.value > 1f) {
+                                                    scrollZoom = 1f
+                                                    scrollOffsetX = 0f
+                                                    scrollOffsetY = 0f
+                                                } else {
+                                                    scrollZoom = 2.5f
+                                                }
+                                            }
+                                        )
+                                    }
+                            )
                         }
                     }
                 }
@@ -1054,66 +1114,70 @@ private fun ZoomableImageBox(
             .fillMaxSize()
             .then(if (clipOwnBounds) Modifier.clipToBounds() else Modifier)
             .onGloballyPositioned { coordinates -> containerSize = coordinates.size }
-            .pointerInput(bitmap) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    do {
-                        val event = awaitPointerEvent()
-                        val isPinch = event.changes.size >= 2
-                        if (isPinch || liveZoom.value > 1f) {
-                            val zoomChange = event.calculateZoom()
-                            val panChange = event.calculatePan()
-                            val newZoom = (liveZoom.value * zoomChange).coerceIn(1f, 5f)
-                            liveSetZoom.value(newZoom)
-                            val currentBmp = bitmap
-                            if (newZoom > 1f && currentBmp != null && containerSize.width > 0 && containerSize.height > 0) {
-                                val containerW = containerSize.width.toFloat()
-                                val containerH = containerSize.height.toFloat()
-                                val bitmapAspect = currentBmp.width.toFloat() / currentBmp.height.toFloat()
-                                val containerAspect = containerW / containerH
-                                val fittedW: Float
-                                val fittedH: Float
-                                if (bitmapAspect > containerAspect) {
-                                    fittedW = containerW
-                                    fittedH = containerW / bitmapAspect
-                                } else {
-                                    fittedH = containerH
-                                    fittedW = containerH * bitmapAspect
+            .then(
+                if (clipOwnBounds) Modifier
+                    .pointerInput(bitmap) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            do {
+                                val event = awaitPointerEvent()
+                                val isPinch = event.changes.size >= 2
+                                if (isPinch || liveZoom.value > 1f) {
+                                    val zoomChange = event.calculateZoom()
+                                    val panChange = event.calculatePan()
+                                    val newZoom = (liveZoom.value * zoomChange).coerceIn(1f, 5f)
+                                    liveSetZoom.value(newZoom)
+                                    val currentBmp = bitmap
+                                    if (newZoom > 1f && currentBmp != null && containerSize.width > 0 && containerSize.height > 0) {
+                                        val containerW = containerSize.width.toFloat()
+                                        val containerH = containerSize.height.toFloat()
+                                        val bitmapAspect = currentBmp.width.toFloat() / currentBmp.height.toFloat()
+                                        val containerAspect = containerW / containerH
+                                        val fittedW: Float
+                                        val fittedH: Float
+                                        if (bitmapAspect > containerAspect) {
+                                            fittedW = containerW
+                                            fittedH = containerW / bitmapAspect
+                                        } else {
+                                            fittedH = containerH
+                                            fittedW = containerH * bitmapAspect
+                                        }
+                                        val scaledW = fittedW * newZoom
+                                        val scaledH = fittedH * newZoom
+                                        val maxOffsetX = ((scaledW - containerW) / 2f).coerceAtLeast(0f)
+                                        val maxOffsetY = ((scaledH - containerH) / 2f).coerceAtLeast(0f)
+                                        val newOffsetX = (liveOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
+                                        val newOffsetY = (liveOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                        val panMasihBisaGerak = newOffsetX != liveOffsetX.value || newOffsetY != liveOffsetY.value
+                                        setOffset(newOffsetX, newOffsetY)
+                                        if (isPinch || panMasihBisaGerak) {
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                    } else {
+                                        setOffset(0f, 0f)
+                                        if (isPinch) {
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                    }
                                 }
-                                val scaledW = fittedW * newZoom
-                                val scaledH = fittedH * newZoom
-                                val maxOffsetX = ((scaledW - containerW) / 2f).coerceAtLeast(0f)
-                                val maxOffsetY = ((scaledH - containerH) / 2f).coerceAtLeast(0f)
-                                val newOffsetX = (liveOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
-                            val newOffsetY = (liveOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
-                            val panMasihBisaGerak = newOffsetX != liveOffsetX.value || newOffsetY != liveOffsetY.value
-                            setOffset(newOffsetX, newOffsetY)
-                            if (isPinch || panMasihBisaGerak) {
-                                event.changes.forEach { it.consume() }
-                            }
-                        } else {
-                            setOffset(0f, 0f)
-                            if (isPinch) {
-                                event.changes.forEach { it.consume() }
-                            }
-                        }
-                        }
-                    } while (event.changes.any { it.pressed })
-                }
-            }
-            .pointerInput(bitmap) {
-                detectTapGestures(
-                    onTap = { onTap() },
-                    onDoubleTap = {
-                        if (liveZoom.value > 1f) {
-                            liveSetZoom.value(1f)
-                            setOffset(0f, 0f)
-                        } else {
-                            liveSetZoom.value(2.5f)
+                            } while (event.changes.any { it.pressed })
                         }
                     }
-                )
-            },
+                    .pointerInput(bitmap) {
+                        detectTapGestures(
+                            onTap = { onTap() },
+                            onDoubleTap = {
+                                if (liveZoom.value > 1f) {
+                                    liveSetZoom.value(1f)
+                                    setOffset(0f, 0f)
+                                } else {
+                                    liveSetZoom.value(2.5f)
+                                }
+                            }
+                        )
+                    }
+                else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (bitmap != null) {
