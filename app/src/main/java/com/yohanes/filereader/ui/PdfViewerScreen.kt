@@ -1085,12 +1085,18 @@ private fun ZoomableImageBox(
                                 val maxOffsetX = ((scaledW - containerW) / 2f).coerceAtLeast(0f)
                                 val maxOffsetY = ((scaledH - containerH) / 2f).coerceAtLeast(0f)
                                 val newOffsetX = (liveOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
-                                val newOffsetY = (liveOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
-                                setOffset(newOffsetX, newOffsetY)
-                            } else {
-                                setOffset(0f, 0f)
+                            val newOffsetY = (liveOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                            val panMasihBisaGerak = newOffsetX != liveOffsetX.value || newOffsetY != liveOffsetY.value
+                            setOffset(newOffsetX, newOffsetY)
+                            if (isPinch || panMasihBisaGerak) {
+                                event.changes.forEach { it.consume() }
                             }
-                            event.changes.forEach { it.consume() }
+                        } else {
+                            setOffset(0f, 0f)
+                            if (isPinch) {
+                                event.changes.forEach { it.consume() }
+                            }
+                        }
                         }
                     } while (event.changes.any { it.pressed })
                 }
