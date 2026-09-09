@@ -265,7 +265,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 FileScanner.scanAll()
             }
             withContext(Dispatchers.IO) {
-                dao.syncAll(results)
+                val removedPaths = dao.syncAll(results)
+                if (removedPaths.isNotEmpty()) {
+                    com.yohanes.filereader.data.LyricsStore.cleanupRemoved(getApplication(), removedPaths)
+                }
             }
             scanPrefs.edit().putLong(KEY_LAST_SCAN, System.currentTimeMillis()).apply()
             _isScanning.value = false

@@ -39,7 +39,7 @@ interface FileDao {
     suspend fun renamePath(oldPath: String, newPath: String, newName: String)
 
     @Transaction
-    suspend fun syncAll(newFiles: List<FileEntity>) {
+    suspend fun syncAll(newFiles: List<FileEntity>): List<String> {
         val existing = getAllOnce().associateBy { it.path }
         val newMap = newFiles.associateBy { it.path }
 
@@ -50,6 +50,7 @@ interface FileDao {
 
         if (toUpsert.isNotEmpty()) insertAll(toUpsert)
         if (toDelete.isNotEmpty()) deleteByPaths(toDelete.toList())
+        return toDelete.toList()
     }
 
     @Query("SELECT * FROM files ORDER BY lastModified DESC")
