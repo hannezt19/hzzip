@@ -34,14 +34,12 @@ Catatan: hz21 mengerjakan PDF SettingsPanel/Mode Baca (BUKAN Direktori/clipboard
 ## Belum Dikerjakan / Rencana Berikutnya
 
 ### Prioritas dekat
-1. Playlist Audio (ydiv2 - Tahap B): tabel Room baru (path+urutan lagu), panel 2 tab "Playlist"/"Semua Audio", direncanakan sebagai bottom sheet dari bawah (gaya Spotify), BUKAN drawer dari samping
-2. Lirik Audio dari tag ID3 USLT (ydiv2 - Tahap C), diakses gestur geser di layar pemutar
+1. Playlist Audio (ydiv2 - Tahap B): tabel Room baru (path+urutan lagu), panel 2 tab "Playlist"/"Semua Audio", bottom sheet dari bawah (gaya Spotify)
+2. Lirik Audio (ydiv2 - Tahap C): file `.lrc` privat per-lagu (bukan tag ID3 USLT seperti rencana awal) + editor lirik sendiri (mode Sederhana & Disinkronkan, terinspirasi Musicolet), highlight+auto-scroll sinkron playback, dibersihkan otomatis lewat syncAll()
 3. Multi-select (tap-tahan pilih banyak file sekaligus) - tahap lanjutan dari FileActionSheet, ditunda sampai single-file actions stabil
 
 ### Belum ada yang pegang / ditunda
 - Fitur **Analisis** (menu: Semua Partisi, File Besar, Berkas Terbaru, Folder Kosong, File Redundan, File Duplikat, Keranjang Sampah) - baru tampilan kosong tanpa fungsi, scope belum ditugaskan ke siapa pun
-- Keputusan hapus/tidak kartu "Favorit" dari grid Beranda (dobel dengan menu Favorit di drawer) - masih pending konfirmasi final user
-- Bug lama: label bulan hilang di mode Terbaru galeri Gambar (cuma bulan berjalan yang ada headernya) - pernah dicoba diperbaiki, belum tuntas
 - Ikon aplikasi baru & penomoran versi app - khusus dipegang hz11/user sendiri (terkait keystore/signing), bukan scope akun lain
 - Panel pengaturan baca lanjutan (kecerahan in-app, mode halaman vertikal/horizontal/ganda), pencarian dalam dokumen PDF, highlight & catatan pribadi, lanjut baca cepat ke file terakhir, pptx viewer, formula aktif di xlsx - semua masih di tahap ide, belum ada yang mulai
 

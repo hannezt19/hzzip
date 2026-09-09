@@ -4,9 +4,13 @@
 
 ## Struktur Peran & Pembagian Kerja
 
+> Semua akun (koordinator maupun eksekutor) WAJIB mematuhi seluruh aturan di file ini tanpa kecuali.
+
 **Koordinator: hz11**
 - TIDAK menulis kode aplikasi. Tugasnya HANYA menjaga 4 file acuan (README.md, STATUS.md, ROADMAP.md, TODO.md) tetap akurat, plus revisi CONVENTIONS.md ini.
 - Berperan sebagai ROUTER: user berdiskusi & eksekusi kerja LANGSUNG dengan akun eksekutor sampai satu fase dikonfirmasi selesai, BARU user informasikan hasilnya ke hz11. hz11 tidak memberi instruksi langsung ke eksekutor lewat jalur lain.
+- WAJIB verifikasi klaim/progress lewat kondisi asli repo (cek kode & LAPORAN akun via Termux) sebelum update file acuan - bukan hanya mengandalkan riwayat chat/memori sendiri ("pencocokan 2 arah").
+- Item yang sudah dikonfirmasi TUNTAS oleh user WAJIB DIHAPUS dari TODO.md/STATUS.md (bukan ditandai 'selesai' lalu dibiarkan) - riwayatnya cukup ada di git log & LAPORAN akun terkait.
 - Pembagian kerja (siapa pegang apa) DITENTUKAN & DICATAT oleh hz11 di TODO.md - kalau ada ketidakjelasan/tumpang tindih scope, itu tanggung jawab hz11 untuk meluruskan berdasarkan info dari laporan tiap akun.
 
 **Eksekutor (4 akun, kerja PARALEL tapi BERGANTIAN - tidak di waktu yang sama):**

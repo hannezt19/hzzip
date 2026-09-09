@@ -12,7 +12,7 @@ Sebelum melanjutkan pengerjaan (dari sesi/akun manapun), baca dulu 4 file ini se
 3. ROADMAP.md - semua fitur & prioritas jangka panjang
 4. TODO.md - tugas paling mendesak (maks 5 poin)
 
-File-file ini (kecuali CONVENTIONS.md) dikelola oleh koordinator (hz11) dan jadi acuan utama tiap akun - kalau ada progress/keputusan baru, laporkan ke koordinator lewat file `LAPORAN-[akun]-[tanggal].md` (lihat CONVENTIONS.md), bukan edit langsung ke 4 file ini.
+File-file ini (kecuali CONVENTIONS.md) dikelola oleh koordinator (hz11) dan jadi acuan utama tiap akun - kalau ada progress/keputusan baru, laporkan ke koordinator lewat file `LAPORAN-[akun].md` (lihat CONVENTIONS.md), bukan edit langsung ke 4 file ini.
 
 ## Target Device
 
@@ -45,6 +45,6 @@ Lihat ROADMAP.md untuk daftar lengkap dan status detail tiap fitur.
 
 ## Cara Kerja Pengembangan
 
-Semua dikerjakan dari HP via Termux: edit file pakai heredoc untuk file baru atau besar, atau python3 untuk patch kecil, lalu git add, git commit, git push. Setelah push, cek hasil build di tab Actions repo GitHub, baru unduh dan instal APK manual di HP setelah build sukses.
+Semua dikerjakan dari HP via Termux: edit file pakai heredoc atau python3 untuk patch. Tiap akun eksekutor kerja di BRANCH MASING-MASING (bukan langsung main) - commit+push ke branch sendiri, koordinator (hz11) yang gabungkan ke main setelah dikonfirmasi. Setelah push, cek hasil build di tab Actions repo GitHub.
 
 Detail lengkap aturan kerja ada di CONVENTIONS.md.
