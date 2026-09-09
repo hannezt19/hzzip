@@ -59,6 +59,20 @@ Urutan bagian yang disarankan ada di tiap LAPORAN-[akun].md:
 4. **Bug** - HANYA yang masih aktif/belum fix. Begitu fix, pindah ke Log Pencapaian.
 5. **Log Pencapaian** - paling bawah, riwayat historis boleh terus bertambah, ringkas 1-2 baris per item.
 
+## ATURAN WAJIB: Kerja di Branch Sendiri (bukan langsung ke main)
+
+Untuk mencegah main rusak kalau sesi terhenti di tengah jalan (misal token habis), tiap akun eksekutor WAJIB kerja di branch miliknya sendiri, bukan langsung push ke main.
+
+Branch tetap per akun: hz19, hz21, hz25, ydiv2 (mengikuti kondisi main terakhir).
+
+Alur kerja tiap akun:
+git checkout [nama-branch-sendiri]
+git pull origin main
+(kerja seperti biasa, commit+push ke branch sendiri)
+git push origin [nama-branch-sendiri]
+
+Proses pindah ke main: dipegang hz11 (koordinator), BUKAN tiap akun merge sendiri. Alurnya: user konfirmasi 1 fase selesai + build hijau di branch tsb -> user informasikan ke hz11 -> hz11 jalankan git merge ke main.
+
 ## Repo & Environment
 - Repo: https://github.com/hannezt19/hzzip (nama folder lokal: FileReaderApp)
 - Dikerjakan sepenuhnya dari HP via Termux, tanpa Android Studio/laptop

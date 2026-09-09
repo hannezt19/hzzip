@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, hz19, hz21, hz25, ydiv2 ]
   workflow_dispatch:
 
 jobs:
