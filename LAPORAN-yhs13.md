@@ -15,3 +15,7 @@
 ## Log Pencapaian
 - Tambah `getFirstFileInCategory()` di HomeViewModel.kt
 - Ubah `onCategoryClick` di HomeScreen.kt: khusus kategori "Audio" langsung panggil `onFileClick` dgn file pertama, kategori lain tetap seperti semula
+
+## Update
+- [SELESAI] Fix teks tab Playlist tak terbaca: paksa warna ListItem (containerColor=PlayerBg, headlineColor=TextDark) biar tidak ikut tema gelap/terang HP
+- [SELESAI] Tambah LastPlayedStore.kt (SharedPreferences, pola sama FavoritesStore): simpan path lagu tiap kali ganti track, dibaca saat kartu Audio di Beranda diklik supaya lanjut dari lagu terakhir

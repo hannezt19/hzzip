@@ -208,6 +208,7 @@ fun AudioPlayerScreen(filePath: String) {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     currentMediaId = mediaItem?.mediaId ?: ""
                     currentTitle = mediaItem?.mediaMetadata?.title?.toString() ?: ""
+                    mediaItem?.mediaId?.let { com.yohanes.filereader.data.LastPlayedStore.setLastPlayed(it) }
                 }
             })
             scope.launch { loadAndPlay(sortOption) }
@@ -540,7 +541,8 @@ private fun PlaylistPage(
                                     },
                                     modifier = Modifier.clickable {
                                         onPlayCustom(customPlaylistEntries.indexOf(entry))
-                                    }
+                                    },
+                                    colors = ListItemDefaults.colors(containerColor = PlayerBg, headlineColor = TextDark)
                                 )
                             }
                         }
@@ -569,7 +571,8 @@ private fun PlaylistPage(
                                 },
                                 modifier = Modifier.clickable {
                                     onPlayAll(playlist.indexOf(entity))
-                                }
+                                },
+                                colors = ListItemDefaults.colors(containerColor = PlayerBg, headlineColor = TextDark)
                             )
                         }
                     }

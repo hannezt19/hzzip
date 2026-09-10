@@ -242,6 +242,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         FavoritesStore.init(application)
+        com.yohanes.filereader.data.LastPlayedStore.init(application)
         val lastScan = scanPrefs.getLong(KEY_LAST_SCAN, 0L)
         val elapsed = System.currentTimeMillis() - lastScan
         if (elapsed > SCAN_INTERVAL_MS) {
@@ -261,6 +262,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // yhs13: ambil file pertama pada kategori tertentu (dipakai kartu Audio di Beranda
     // supaya bisa langsung buka pemutar tanpa lewat daftar file kategori dulu)
     fun getFirstFileInCategory(category: String): FileEntity? {
+        if (category == "Audio") {
+            val lastPath = com.yohanes.filereader.data.LastPlayedStore.lastPlayedPath.value
+            if (lastPath != null) {
+                files.value.firstOrNull { it.path == lastPath && categoryOf(it.extension) == "Audio" }?.let { return it }
+            }
+        }
         return files.value.firstOrNull { categoryOf(it.extension) == category }
     }
 
