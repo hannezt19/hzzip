@@ -220,6 +220,10 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                 return splitSentences(sourceText)
             }
 
+            LaunchedEffect(Unit) {
+                TtsHelper.onAudioFocusLost = { ttsPlaying = false }
+            }
+
             fun speakSentence(index: Int) {
                 val s = ttsSentences.getOrNull(index) ?: return
                 TtsHelper.speak(s, readerSettings.ttsVolume, readerSettings.ttsPitch, readerSettings.ttsSpeed)

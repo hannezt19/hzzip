@@ -69,3 +69,5 @@ Tidak ada saat ini.
 - Fix build kedua: import salah androidx.media3.ui.NotificationCompat (tidak ada) dihapus, tidak pernah dipakai karena signature sudah pakai nama lengkap androidx.core.app.NotificationCompat.Builder. [PROSES - menunggu build hijau]
 
 - Bug ditemukan+fix: AudioPlayerService tidak pernah request Audio Focus (ExoPlayer dibuat tanpa AudioAttributes), jadi bisa main bersamaan dengan app musik lain (mis. Musicolet) tanpa saling pause. Fix: setAudioAttributes(..., handleAudioFocus=true) saat build ExoPlayer. [PROSES - menunggu build+tes HP]
+
+- Bug ditemukan+fix (mirip kasus Audio Player): TTS PDF (TtsHelper, pakai TextToSpeech biasa) tidak pernah request Audio Focus, jadi bisa main bersamaan dgn app musik lain tanpa gantian. Fix: requestAudioFocus() saat speak(), abandonAudioFocus() saat stop(), auto-stop+callback onAudioFocusLost ke PdfViewerScreen (set ttsPlaying=false) kalau focus direbut app lain. [PROSES - menunggu build+tes HP]
