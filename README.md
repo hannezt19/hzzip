@@ -45,6 +45,6 @@ Lihat ROADMAP.md untuk daftar lengkap dan status detail tiap fitur.
 
 ## Cara Kerja Pengembangan
 
-Semua dikerjakan dari HP via Termux: edit file pakai heredoc atau python3 untuk patch. Tiap akun eksekutor kerja di BRANCH MASING-MASING (bukan langsung main) - commit+push ke branch sendiri, koordinator (hz11) yang gabungkan ke main setelah dikonfirmasi. Setelah push, cek hasil build di tab Actions repo GitHub.
+Semua dikerjakan dari HP via Termux: edit file pakai heredoc atau python3 untuk patch. Semua akun eksekutor kerja LANGSUNG di branch main (`git pull origin main` wajib di awal sesi) - commit+push ke main HANYA setelah 1 fase dikonfirmasi selesai oleh user. Setelah push, cek hasil build di tab Actions repo GitHub.
 
 Detail lengkap aturan kerja ada di CONVENTIONS.md.

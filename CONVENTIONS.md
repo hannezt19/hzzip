@@ -63,19 +63,20 @@ Urutan bagian yang disarankan ada di tiap LAPORAN-[akun].md:
 4. **Bug** - HANYA yang masih aktif/belum fix. Begitu fix, pindah ke Log Pencapaian.
 5. **Log Pencapaian** - paling bawah, riwayat historis boleh terus bertambah, ringkas 1-2 baris per item.
 
-## ATURAN WAJIB: Kerja di Branch Sendiri (bukan langsung ke main)
+## ATURAN WAJIB: Semua Akun Kerja Langsung di Branch main
 
-Untuk mencegah main rusak kalau sesi terhenti di tengah jalan (misal token habis), tiap akun eksekutor WAJIB kerja di branch miliknya sendiri, bukan langsung push ke main.
+Tidak ada lagi branch terpisah per akun. Semua eksekutor (hz19, hz21, hz25, ydiv2) kerja & push LANGSUNG ke `main`.
 
-Branch tetap per akun: hz19, hz21, hz25, ydiv2 (mengikuti kondisi main terakhir).
+Alur kerja WAJIB tiap sesi:
+1. `git checkout main && git pull origin main` - WAJIB di awal sesi, sebelum patch apa pun.
+2. Kerja & patch seperti biasa.
+3. Commit+push ke `main` HANYA setelah 1 fase dikonfirmasi selesai oleh user (build hijau + sudah dites di HP) - bukan tiap potongan kode selesai ditulis. Checkpoint sekali jalan (patch+laporan+commit dalam 1 blok) tetap berlaku.
 
-Alur kerja tiap akun:
-git checkout [nama-branch-sendiri]
-git pull origin main
-(kerja seperti biasa, commit+push ke branch sendiri)
-git push origin [nama-branch-sendiri]
+ATURAN WAJIB kalau sesi harus berhenti SEBELUM fase dikonfirmasi selesai (misal token habis di tengah jalan):
+- `git stash` kerjaan yang belum di-commit SEBELUM keluar atau ganti akun. Jangan biarkan file berubah menggantung di working directory - akun lain yang lanjut pakai folder yang sama bisa ketiban kerjaan asing.
+- Sesi berikutnya yang melanjutkan: cek `git stash list` dulu, `git stash pop` kalau mau lanjutkan kerjaan yang tertunda.
 
-Proses pindah ke main: dipegang hz11 (koordinator), BUKAN tiap akun merge sendiri. Alurnya: user konfirmasi 1 fase selesai + build hijau di branch tsb -> user informasikan ke hz11 -> hz11 jalankan git merge ke main.
+Proses ke main sekarang dilakukan LANGSUNG oleh eksekutor sendiri - hz11 TIDAK lagi merge manual. hz11 hanya memperbarui dokumentasi (README/STATUS/ROADMAP/TODO.md) setelah user menginformasikan fase selesai.
 
 ## Repo & Environment
 - Repo: https://github.com/hannezt19/hzzip (nama folder lokal: FileReaderApp)

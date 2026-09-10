@@ -1,8 +1,8 @@
 # TODO - FileReaderApp
 
-> Dikelola oleh hz11 (koordinator). Update terakhir: 8 Sept 2026 - cross-check ke branch tiap akun via Termux (git show), bukan cuma laporan di main yang sudah basi.
+> Dikelola oleh hz11 (koordinator). Update terakhir: 8 Sept 2026 - cross-check ke kondisi main terbaru via Termux (git log/git show), bukan cuma laporan yang sudah basi.
 > File ini isinya tugas AKTIF tiap akun + keputusan yang masih menunggu user. Rencana besar ada di ROADMAP.md.
-> PENTING: semua tugas dikerjakan di BRANCH masing-masing akun (bukan langsung main) - lihat CONVENTIONS.md.
+> PENTING: semua tugas dikerjakan LANGSUNG di branch main (bukan branch terpisah per akun lagi) - lihat CONVENTIONS.md.
 
 ## Pembagian Kerja Aktif
 
