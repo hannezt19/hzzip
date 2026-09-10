@@ -372,7 +372,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                                     scrollZoom = newZoom
                                                     if (newZoom > 1f && scrollContainerSize.width > 0 && scrollContainerSize.height > 0) {
                                                         val maxOffsetX = scrollContainerSize.width.toFloat() * (newZoom - 1f) / 2f
-                                                        val maxOffsetY = scrollContainerSize.height.toFloat() * (newZoom - 1f) / 2f
+                                                        val maxOffsetY = (scrollContainerSize.width.toFloat() / 0.7071f) * (newZoom - 1f) / 2f
                                                         val newOffsetX = (liveScrollOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
                                                         val newOffsetY = (liveScrollOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
                                                         val panMasihBisaGerak = newOffsetX != liveScrollOffsetX.value || newOffsetY != liveScrollOffsetY.value
@@ -1277,7 +1277,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZ
         onTap = onTap,
         externalZoom = sharedZoom,
         onExternalZoomChange = onSharedZoomChange,
-        clipOwnBounds = sharedZoom == null,
+        clipOwnBounds = true,
         externalOffsetX = sharedOffsetX,
         externalOffsetY = sharedOffsetY,
         onExternalOffsetChange = onSharedOffsetChange

@@ -25,3 +25,6 @@ Perbaikan padding Beranda/kategori & toggle Video sudah dikonfirmasi selesai. Se
 ## Update [isi tanggal]
 - Konfirmasi: bug kartu "Gambar" 0 file SUDAH TIDAK RELEVAN — sekarang terdeteksi normal (22935 file), lihat screenshot terlampir.
 - Rekomendasi ke hz11: hapus poin ini dari TODO.md dan STATUS.md ("Bug Diketahui").
+
+## Log Pencapaian
+- Fix bug PDF mode Scroll: halaman bertumpuk & tidak bisa scroll saat zoom vertikal. Penyebab: clipOwnBounds selalu false di mode Scroll (bocor ke halaman tetangga) + maxOffsetY pakai tinggi layar penuh (batas kepanjangan, gagal lepas kontrol ke scroll normal). Fix: clipOwnBounds selalu true, maxOffsetY dihitung dari lebar kontainer/aspect rasio standar halaman. Dikonfirmasi tes di HP.
