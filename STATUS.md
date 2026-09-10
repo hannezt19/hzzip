@@ -40,3 +40,7 @@
 - **Kartu Favorit di grid Beranda**: DIKONFIRMASI FINAL SUDAH DIHAPUS (dobel dengan menu Favorit di drawer) - tugas dilimpahkan ke hz25
 - **Navigasi Audio Player**: 3 halaman (Playlist|Pemutar|Lirik) via HorizontalPager swipe kiri-kanan, BUKAN bottom sheet dari bawah seperti rencana awal - alasan: bottom sheet kurang nyaman diakses (uji-coba langsung user), konsisten dengan pola HorizontalPager yang sudah dipakai PDF/galeri Gambar, dan hindari konflik gestur dengan drawer app (gestur tepi sudah dimatikan)
 - **Lirik Audio**: sumber dari tag ID3 USLT tertanam (bukan file .lrc terpisah) - deteksi otomatis pola timestamp dalam teks lirik ala Musicolet
+
+## Update (hz11)
+- Bug build-breaking `Unresolved reference: clickable` di AudioPlayerScreen.kt SUDAH FIX oleh ydiv2 (dibantu akun baru yhs13). Build sudah hijau.
+- Akun **yhs13** kini membantu ydiv2 untuk bagian Audio.

@@ -29,3 +29,6 @@
 ## Belum Ada yang Pegang
 - Fitur Analisis (Semua Partisi/File Besar/Berkas Terbaru/Folder Kosong/File Redundan/File Duplikat/Keranjang Sampah) - baru tampilan kosong tanpa fungsi
 - Penomoran versi app - khusus dipegang hz11/user sendiri
+
+## Update (hz11)
+- [SELESAI] Bug build-breaking clickable di AudioPlayerScreen.kt - fix oleh ydiv2+yhs13, build hijau.
