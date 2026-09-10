@@ -509,9 +509,25 @@ private fun PlaylistPage(
     var sheetTab by remember { mutableStateOf(0) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 16.dp)) {
-        TabRow(selectedTabIndex = sheetTab) {
-            Tab(selected = sheetTab == 0, onClick = { sheetTab = 0 }, text = { Text("Playlist") })
-            Tab(selected = sheetTab == 1, onClick = { sheetTab = 1 }, text = { Text("Semua Audio") })
+        TabRow(
+            selectedTabIndex = sheetTab,
+            containerColor = PlayerSurface,
+            contentColor = TextDark
+        ) {
+            Tab(
+                selected = sheetTab == 0,
+                onClick = { sheetTab = 0 },
+                text = { Text("Playlist", color = TextDark) },
+                selectedContentColor = TextDark,
+                unselectedContentColor = TextDark.copy(alpha = 0.5f)
+            )
+            Tab(
+                selected = sheetTab == 1,
+                onClick = { sheetTab = 1 },
+                text = { Text("Semua Audio", color = TextDark) },
+                selectedContentColor = TextDark,
+                unselectedContentColor = TextDark.copy(alpha = 0.5f)
+            )
         }
 
         Box(Modifier.weight(1f)) {
@@ -538,6 +554,7 @@ private fun PlaylistPage(
                                             onToggleInPlaylist = { scope.launch { playlistDao.removeByPath(entry.path) } }
                                         )
                                     },
+                                    colors = ListItemDefaults.colors(containerColor = PlayerBg, headlineColor = TextDark),
                                     modifier = Modifier.clickable {
                                         onPlayCustom(customPlaylistEntries.indexOf(entry))
                                     }
@@ -567,6 +584,7 @@ private fun PlaylistPage(
                                         }
                                     )
                                 },
+                                colors = ListItemDefaults.colors(containerColor = PlayerBg, headlineColor = TextDark),
                                 modifier = Modifier.clickable {
                                     onPlayAll(playlist.indexOf(entity))
                                 }
@@ -654,21 +672,25 @@ private fun SongOptionsMenu(
         IconButton(onClick = { menuExpanded = true }) {
             Icon(Icons.Default.MoreVert, contentDescription = "Opsi lagu", tint = TextDark.copy(alpha = 0.5f))
         }
-        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+            containerColor = PlayerSurface
+        ) {
             DropdownMenuItem(
-                text = { Text("Info lagu") },
+                text = { Text("Info lagu", color = TextDark) },
                 leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
                 onClick = { menuExpanded = false; showInfoDialog = true }
             )
             DropdownMenuItem(
-                text = { Text(if (inPlaylist) "Hapus dari Playlist" else "Tambahkan ke Playlist") },
+                text = { Text(if (inPlaylist) "Hapus dari Playlist" else "Tambahkan ke Playlist", color = TextDark) },
                 leadingIcon = {
                     Icon(if (inPlaylist) Icons.Default.Close else Icons.Default.Add, contentDescription = null)
                 },
                 onClick = { menuExpanded = false; onToggleInPlaylist() }
             )
             DropdownMenuItem(
-                text = { Text("Bagikan") },
+                text = { Text("Bagikan", color = TextDark) },
                 leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                 onClick = {
                     menuExpanded = false
@@ -690,17 +712,18 @@ private fun SongOptionsMenu(
     if (showInfoDialog) {
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
+            containerColor = PlayerSurface,
             confirmButton = {
-                TextButton(onClick = { showInfoDialog = false }) { Text("Tutup") }
+                TextButton(onClick = { showInfoDialog = false }) { Text("Tutup", color = TextDark) }
             },
-            title = { Text("Info Lagu") },
+            title = { Text("Info Lagu", color = TextDark) },
             text = {
                 Column {
-                    Text("Nama file: " + name)
+                    Text("Nama file: " + name, color = TextDark)
                     Spacer(Modifier.height(4.dp))
-                    Text("Ukuran: " + formatFileSize(sizeBytes))
+                    Text("Ukuran: " + formatFileSize(sizeBytes), color = TextDark)
                     Spacer(Modifier.height(4.dp))
-                    Text("Path: " + path)
+                    Text("Path: " + path, color = TextDark)
                 }
             }
         )

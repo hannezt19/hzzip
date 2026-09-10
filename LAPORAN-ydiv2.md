@@ -61,3 +61,6 @@ Tidak ada saat ini.
 
 ## Fix bug: judul & lagu tidak sinkron di tab Playlist
 - [SELESAI] playFromCustomPlaylist(): startIndex dulu dihitung dari customPlaylistEntries MENTAH, sementara mediaItems dibuang (mapNotNull) kalau file sudah tidak ketemu di fileByPath - bikin index geser & judul/lagu tidak sinkron begitu ada 1 entry "yatim" (path tercatat di playlist tapi file sudah dipindah/hilang). Fix: filter dulu baru hitung ulang index dari list yang sudah valid.
+
+## Fix bug: teks Playlist tidak terbaca di mode Dark
+- [SELESAI] TabRow/ListItem/DropdownMenu/AlertDialog Info Lagu di PlaylistPage lupa dikasih warna eksplisit, jadi ikut skema tema sistem (gelap di dark mode) sementara teks tetap TextDark hardcoded - dipatch semua pakai palet PlayerSurface/PlayerBg/TextDark yang sama konsisten dgn sisa AudioPlayerScreen (yang memang sengaja tidak ikut dark mode)
