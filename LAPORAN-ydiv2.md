@@ -64,3 +64,6 @@ Tidak ada saat ini.
 
 ## Fix bug: teks Playlist tidak terbaca di mode Dark
 - [SELESAI] TabRow/ListItem/DropdownMenu/AlertDialog Info Lagu di PlaylistPage lupa dikasih warna eksplisit, jadi ikut skema tema sistem (gelap di dark mode) sementara teks tetap TextDark hardcoded - dipatch semua pakai palet PlayerSurface/PlayerBg/TextDark yang sama konsisten dgn sisa AudioPlayerScreen (yang memang sengaja tidak ikut dark mode)
+
+## Fix build error: DropdownMenu containerColor
+- [SELESAI] Versi Material3 di project ini tidak punya parameter containerColor langsung di DropdownMenu - diganti pakai modifier = Modifier.background(PlayerSurface), lebih kompatibel

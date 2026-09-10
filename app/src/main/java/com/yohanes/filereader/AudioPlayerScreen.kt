@@ -675,7 +675,7 @@ private fun SongOptionsMenu(
         DropdownMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
-            containerColor = PlayerSurface
+            modifier = Modifier.background(PlayerSurface)
         ) {
             DropdownMenuItem(
                 text = { Text("Info lagu", color = TextDark) },
