@@ -1,7 +1,5 @@
 package com.yohanes.filereader
 
-import android.app.Notification
-import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import androidx.media3.common.MediaItem
@@ -14,6 +12,7 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import androidx.media3.ui.NotificationCompat
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -21,20 +20,23 @@ import java.io.File
 
 private val CMD_STOP = SessionCommand("com.yohanes.filereader.STOP", android.os.Bundle.EMPTY)
 
+// Provider notifikasi custom: dasarnya tetap DefaultMediaNotificationProvider (jadi tombol
+// prev/play-pause/next bawaan tetap ada apa adanya), cuma di-override bagian addNotificationActions
+// supaya notifikasi dipaksa "ongoing" (tidak bisa di-swipe/hilang) kapan pun - baik playing maupun
+// paused. createNotification tidak bisa dioverride langsung (final di versi Media3 ini), jadi
+// setOngoing dipasang lewat method addNotificationActions yang memang disediakan untuk dikustomisasi.
 @UnstableApi
 class CustomMediaNotificationProvider(context: android.content.Context) :
     DefaultMediaNotificationProvider(context) {
-    override fun createNotification(
+    override fun addNotificationActions(
         mediaSession: MediaSession,
-        customLayout: ImmutableList<CommandButton>,
-        actionFactory: MediaNotification.ActionFactory,
-        onNotificationChangedCallback: MediaNotification.Provider.Callback
-    ): MediaNotification {
-        val result = super.createNotification(mediaSession, customLayout, actionFactory, onNotificationChangedCallback)
-        // Notifikasi dibuat non-dismissable (tidak bisa di-swipe) kapan pun - baik playing maupun paused.
-        // Satu-satunya cara menutup adalah lewat tombol X (custom command STOP di bawah).
-        result.notification.flags = result.notification.flags or Notification.FLAG_ONGOING_EVENT
-        return result
+        mediaButtons: ImmutableList<CommandButton>,
+        builder: androidx.core.app.NotificationCompat.Builder,
+        actionFactory: MediaNotification.ActionFactory
+    ): IntArray {
+        val indices = super.addNotificationActions(mediaSession, mediaButtons, builder, actionFactory)
+        builder.setOngoing(true)
+        return indices
     }
 }
 
@@ -56,9 +58,9 @@ class AudioPlayerService : androidx.media3.session.MediaSessionService() {
                     data = Uri.fromFile(File(path))
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
-                val pendingIntent = PendingIntent.getActivity(
+                val pendingIntent = android.app.PendingIntent.getActivity(
                     this@AudioPlayerService, 0, openIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
                 )
                 mediaSession?.setSessionActivity(pendingIntent)
             }

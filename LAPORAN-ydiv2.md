@@ -63,3 +63,5 @@ Tidak ada saat ini.
 - [SELESAI] playFromCustomPlaylist(): startIndex dulu dihitung dari customPlaylistEntries MENTAH, sementara mediaItems dibuang (mapNotNull) kalau file sudah tidak ketemu di fileByPath - bikin index geser & judul/lagu tidak sinkron begitu ada 1 entry "yatim" (path tercatat di playlist tapi file sudah dipindah/hilang). Fix: filter dulu baru hitung ulang index dari list yang sudah valid.
 
 - Notifikasi Audio dirombak: non-dismissable (tidak bisa swipe) kapan pun, tombol X (custom command STOP) untuk tutup/stop, tap badan notifikasi buka ke Pemutar dengan lagu yang sedang main. [PROSES - belum dites di HP]
+
+- Notifikasi Audio dirombak: non-dismissable (tidak bisa swipe) kapan pun via override addNotificationActions+setOngoing, tombol X (custom command STOP) untuk tutup/stop, tap badan notifikasi buka ke Pemutar dengan lagu yang sedang main. Percobaan pertama gagal build (createNotification final), sudah diperbaiki. [PROSES - belum dites di HP]
