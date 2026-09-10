@@ -65,3 +65,5 @@ Tidak ada saat ini.
 - Notifikasi Audio dirombak: non-dismissable (tidak bisa swipe) kapan pun, tombol X (custom command STOP) untuk tutup/stop, tap badan notifikasi buka ke Pemutar dengan lagu yang sedang main. [PROSES - belum dites di HP]
 
 - Notifikasi Audio dirombak: non-dismissable (tidak bisa swipe) kapan pun via override addNotificationActions+setOngoing, tombol X (custom command STOP) untuk tutup/stop, tap badan notifikasi buka ke Pemutar dengan lagu yang sedang main. Percobaan pertama gagal build (createNotification final), sudah diperbaiki. [PROSES - belum dites di HP]
+
+- Fix build kedua: import salah androidx.media3.ui.NotificationCompat (tidak ada) dihapus, tidak pernah dipakai karena signature sudah pakai nama lengkap androidx.core.app.NotificationCompat.Builder. [PROSES - menunggu build hijau]
