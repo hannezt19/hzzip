@@ -258,6 +258,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _searchQuery.value = ""
     }
 
+    // yhs13: ambil file pertama pada kategori tertentu (dipakai kartu Audio di Beranda
+    // supaya bisa langsung buka pemutar tanpa lewat daftar file kategori dulu)
+    fun getFirstFileInCategory(category: String): FileEntity? {
+        return files.value.firstOrNull { categoryOf(it.extension) == category }
+    }
+
     fun onSortOptionChange(option: SortOption) {
         _sortOption.value = option
     }

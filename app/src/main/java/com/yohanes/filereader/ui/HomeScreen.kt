@@ -75,7 +75,19 @@ fun HomeScreen(
         )
         else -> CategoryHomeScreen(
             viewModel = viewModel,
-            onCategoryClick = { viewModel.onCategorySelected(it) },
+            onCategoryClick = { cat ->
+                // yhs13: kartu Audio langsung ke pemutar musik (skip daftar file kategori)
+                if (cat == "Audio") {
+                    val firstAudio = viewModel.getFirstFileInCategory("Audio")
+                    if (firstAudio != null) {
+                        onFileClick(firstAudio)
+                    } else {
+                        viewModel.onCategorySelected(cat)
+                    }
+                } else {
+                    viewModel.onCategorySelected(cat)
+                }
+            },
             onFileClick = onFileClick,
             onFileLongClick = onFileLongClick,
             onPickFileManually = onPickFileManually,
