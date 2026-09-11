@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,7 +58,14 @@ fun VideoGalleryScreen(
     selectedFolderPath: String?,
     onFolderSelected: (String?) -> Unit,
     onFileClick: (FileEntity) -> Unit,
-    onFileLongClick: (FileEntity) -> Unit
+    onFileLongClick: (FileEntity) -> Unit,
+    selectedPaths: Set<String>,
+    isSelectionMode: Boolean,
+    onToggleSelect: (FileEntity) -> Unit,
+    onClearSelection: () -> Unit,
+    onCopySelected: () -> Unit,
+    onCutSelected: () -> Unit,
+    onDeleteSelected: () -> Unit
 ) {
     val folderGroups = remember(videos) {
         videos
@@ -70,8 +78,8 @@ fun VideoGalleryScreen(
         folderGroups.find { it.path == selectedFolderPath }
     }
 
-    BackHandler(enabled = selectedFolderPath != null) {
-        onFolderSelected(null)
+    BackHandler(enabled = selectedFolderPath != null || isSelectionMode) {
+        if (isSelectionMode) onClearSelection() else onFolderSelected(null)
     }
 
     if (mode == VideoGalleryMode.FOLDER && selectedFolder != null) {
@@ -93,9 +101,24 @@ fun VideoGalleryScreen(
                     contentPadding = PaddingValues(4.dp)
                 ) {
                     items(folder.videos, key = { it.path }) { file ->
-                        VideoThumbnail(file = file, onClick = { onFileClick(file) }, onLongClick = { onFileLongClick(file) })
+                        VideoThumbnail(
+                            file = file,
+                            isSelected = selectedPaths.contains(file.path),
+                            onClick = { if (isSelectionMode) onToggleSelect(file) else onFileClick(file) },
+                            onLongClick = { onFileLongClick(file) }
+                        )
                     }
                 }
+            }
+            if (isSelectionMode) {
+                SelectionTopBar(count = selectedPaths.size, onClose = onClearSelection, modifier = Modifier.align(Alignment.TopCenter))
+                SelectionActionBar(
+                    selectedCount = selectedPaths.size,
+                    onCopy = onCopySelected,
+                    onCut = onCutSelected,
+                    onDeleteConfirmed = onDeleteSelected,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
         return
@@ -111,7 +134,12 @@ fun VideoGalleryScreen(
                 contentPadding = PaddingValues(4.dp, 4.dp, 4.dp, 64.dp)
             ) {
                 items(flatVideos, key = { it.path }) { file ->
-                    VideoThumbnail(file = file, onClick = { onFileClick(file) }, onLongClick = { onFileLongClick(file) })
+                    VideoThumbnail(
+                        file = file,
+                        isSelected = selectedPaths.contains(file.path),
+                        onClick = { if (isSelectionMode) onToggleSelect(file) else onFileClick(file) },
+                        onLongClick = { onFileLongClick(file) }
+                    )
                 }
             }
         } else {
@@ -124,6 +152,17 @@ fun VideoGalleryScreen(
                     FolderThumbnail(folder = folder, onClick = { onFolderSelected(folder.path) })
                 }
             }
+        }
+
+        if (isSelectionMode) {
+            SelectionTopBar(count = selectedPaths.size, onClose = onClearSelection, modifier = Modifier.align(Alignment.TopCenter))
+            SelectionActionBar(
+                selectedCount = selectedPaths.size,
+                onCopy = onCopySelected,
+                onCut = onCutSelected,
+                onDeleteConfirmed = onDeleteSelected,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
 
         Row(
@@ -222,7 +261,7 @@ private fun FolderThumbnail(folder: FolderGroup, onClick: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun VideoThumbnail(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun VideoThumbnail(file: FileEntity, isSelected: Boolean = false, onClick: () -> Unit, onLongClick: () -> Unit) {
     Box(
         modifier = Modifier
             .padding(2.dp)
@@ -267,6 +306,17 @@ private fun VideoThumbnail(file: FileEntity, onClick: () -> Unit, onLongClick: (
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(18.dp)
+            )
+        }
+        if (isSelected) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+            )
+            Icon(
+                imageVector = Icons.Filled.CheckCircle,
+                contentDescription = "Dipilih",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
             )
         }
     }

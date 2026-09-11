@@ -43,3 +43,7 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 ## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 3)
 - [PROSES] Checkpoint 3: file baru SelectionBar.kt (SelectionTopBar + SelectionActionBar, reusable). Wiring penuh ke DirektoriScreen: tap toggle pilih, highlight+centang di FileRow, Tempel loop banyak file, BackHandler keluar mode-pilih dulu. Menunggu build+tes di HP.
 - Rencana lanjut: wiring sama ke VideoGalleryScreen, ImageGalleryScreen, FileListWithModeToggle (PDF/Excel/Teks/Favorit) di checkpoint berikutnya.
+
+## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 4 - Video)
+- [PROSES] VideoGalleryScreen.kt: VideoThumbnail +isSelected (highlight+centang), tap toggle pilih saat mode aktif, SelectionTopBar/SelectionActionBar disisipkan di kedua Box (dalam folder & grid utama), BackHandler gabungan (keluar mode pilih dulu sebelum navigasi folder). Wiring penuh di HomeScreen.kt (CategoryDetailScreen -> selectedPaths/isSelectionMode dari viewModel, selectedFileEntities dihitung dari videos+selectedPaths). Menunggu build+tes di HP.
+- Checkpoint selanjutnya: Gambar (ImageGalleryScreen.kt, 2 mode), lalu FileListWithModeToggle.kt (PDF/Excel/Teks/Favorit). Ada juga permintaan tertunda: long-press folder di Direktori supaya folder kosong bisa dihapus (dikerjakan pas nyentuh HomeScreen.kt lagi).

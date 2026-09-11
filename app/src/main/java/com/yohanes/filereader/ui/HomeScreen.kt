@@ -663,6 +663,11 @@ private fun CategoryDetailScreen(
             val videos by viewModel.videos.collectAsState()
             val videoMode by viewModel.videoGalleryMode.collectAsState()
             val selectedVideoFolder by viewModel.selectedVideoFolderPath.collectAsState()
+            val selectedPaths by viewModel.selectedPaths.collectAsState()
+            val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+            val selectedFileEntities = remember(videos, selectedPaths) {
+                videos.filter { selectedPaths.contains(it.path) }
+            }
             VideoGalleryScreen(
                 videos = videos,
                 mode = videoMode,
@@ -670,7 +675,14 @@ private fun CategoryDetailScreen(
                 selectedFolderPath = selectedVideoFolder,
                 onFolderSelected = { viewModel.selectVideoFolder(it) },
                 onFileClick = onFileClick,
-                onFileLongClick = onFileLongClick
+                onFileLongClick = onFileLongClick,
+                selectedPaths = selectedPaths,
+                isSelectionMode = isSelectionMode,
+                onToggleSelect = { viewModel.toggleSelect(it) },
+                onClearSelection = { viewModel.clearSelection() },
+                onCopySelected = { FileClipboard.copy(selectedFileEntities); viewModel.clearSelection() },
+                onCutSelected = { FileClipboard.cut(selectedFileEntities); viewModel.clearSelection() },
+                onDeleteSelected = { viewModel.deleteFiles(selectedFileEntities) }
             )
         } else {
             val categoryModes by viewModel.categoryGalleryMode.collectAsState()
