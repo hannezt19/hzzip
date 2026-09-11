@@ -273,6 +273,8 @@ private fun DirektoriScreen(
 ) {
     val rootPath = android.os.Environment.getExternalStorageDirectory().path
     var currentDir by remember { mutableStateOf(java.io.File(rootPath)) }
+    val selectedPaths by viewModel.selectedPaths.collectAsState()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
 
     BackHandler(enabled = true) {
         if (isSelectionMode) {
@@ -297,8 +299,6 @@ private fun DirektoriScreen(
 
     val clipboardState by FileClipboard.state.collectAsState()
     val scope = rememberCoroutineScope()
-    val selectedPaths by viewModel.selectedPaths.collectAsState()
-    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedFileEntities = remember(entries, selectedPaths) {
         entries.filter { !it.isDirectory && selectedPaths.contains(it.absolutePath) }
             .map { entry ->
