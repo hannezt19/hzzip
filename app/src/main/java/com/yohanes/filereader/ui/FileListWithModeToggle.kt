@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,7 +52,14 @@ fun FileListWithModeToggle(
     mode: VideoGalleryMode,
     onModeChange: (VideoGalleryMode) -> Unit,
     onFileClick: (FileEntity) -> Unit,
-    onFileLongClick: (FileEntity) -> Unit
+    onFileLongClick: (FileEntity) -> Unit,
+    selectedPaths: Set<String>,
+    isSelectionMode: Boolean,
+    onToggleSelect: (FileEntity) -> Unit,
+    onClearSelection: () -> Unit,
+    onCopySelected: () -> Unit,
+    onCutSelected: () -> Unit,
+    onDeleteSelected: () -> Unit
 ) {
     val items = remember(files, mode) {
         if (mode == VideoGalleryMode.TERBARU) {
@@ -85,11 +95,27 @@ fun FileListWithModeToggle(
                         )
                     }
                     is ListItem.Row -> {
-                        FileRowPublic(file = item.file, onClick = { onFileClick(item.file) }, onLongClick = { onFileLongClick(item.file) })
+                        FileRowPublic(
+                            file = item.file,
+                            isSelected = selectedPaths.contains(item.file.path),
+                            onClick = { if (isSelectionMode) onToggleSelect(item.file) else onFileClick(item.file) },
+                            onLongClick = { onFileLongClick(item.file) }
+                        )
                         Divider()
                     }
                 }
             }
+        }
+
+        if (isSelectionMode) {
+            SelectionTopBar(count = selectedPaths.size, onClose = onClearSelection, modifier = Modifier.align(Alignment.TopCenter))
+            SelectionActionBar(
+                selectedCount = selectedPaths.size,
+                onCopy = onCopySelected,
+                onCut = onCutSelected,
+                onDeleteConfirmed = onDeleteSelected,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
 
         Row(
@@ -133,10 +159,11 @@ private fun ModeTogglePill(label: String, selected: Boolean, onClick: () -> Unit
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FileRowPublic(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun FileRowPublic(file: FileEntity, isSelected: Boolean = false, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
             .padding(16.dp, 12.dp)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically
@@ -149,6 +176,9 @@ private fun FileRowPublic(file: FileEntity, onClick: () -> Unit, onLongClick: ()
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        if (isSelected) {
+            Icon(Icons.Filled.CheckCircle, contentDescription = "Dipilih", tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

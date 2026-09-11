@@ -47,3 +47,6 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 ## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 4 - Video)
 - [PROSES] VideoGalleryScreen.kt: VideoThumbnail +isSelected (highlight+centang), tap toggle pilih saat mode aktif, SelectionTopBar/SelectionActionBar disisipkan di kedua Box (dalam folder & grid utama), BackHandler gabungan (keluar mode pilih dulu sebelum navigasi folder). Wiring penuh di HomeScreen.kt (CategoryDetailScreen -> selectedPaths/isSelectionMode dari viewModel, selectedFileEntities dihitung dari videos+selectedPaths). Menunggu build+tes di HP.
 - Checkpoint selanjutnya: Gambar (ImageGalleryScreen.kt, 2 mode), lalu FileListWithModeToggle.kt (PDF/Excel/Teks/Favorit). Ada juga permintaan tertunda: long-press folder di Direktori supaya folder kosong bisa dihapus (dikerjakan pas nyentuh HomeScreen.kt lagi).
+
+## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 6 - List PDF/Excel/Teks/Favorit)
+- [PROSES] FileListWithModeToggle.kt: FileRowPublic +isSelected (highlight+centang), tap toggle pilih saat mode aktif, SelectionTopBar/SelectionActionBar disisipkan. Wiring penuh di HomeScreen.kt (CategoryDetailScreen). Checkpoint 5 (Gambar) SENGAJA DITUNDA - hz19 masih proses accordion galeri Gambar di file yang sama, dihindari dulu supaya tidak bentrok. Menunggu build+tes di HP.

@@ -706,12 +706,24 @@ private fun CategoryDetailScreen(
         } else {
             val categoryModes by viewModel.categoryGalleryMode.collectAsState()
             val mode = categoryModes[category] ?: VideoGalleryMode.TERBARU
+            val selectedPaths by viewModel.selectedPaths.collectAsState()
+            val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+            val selectedFileEntities = remember(files, selectedPaths) {
+                files.filter { selectedPaths.contains(it.path) }
+            }
             FileListWithModeToggle(
                 files = files,
                 mode = mode,
                 onModeChange = { viewModel.setCategoryGalleryMode(category, it) },
                 onFileClick = onFileClick,
-                onFileLongClick = onFileLongClick
+                onFileLongClick = onFileLongClick,
+                selectedPaths = selectedPaths,
+                isSelectionMode = isSelectionMode,
+                onToggleSelect = { viewModel.toggleSelect(it) },
+                onClearSelection = { viewModel.clearSelection() },
+                onCopySelected = { FileClipboard.copy(selectedFileEntities); viewModel.clearSelection() },
+                onCutSelected = { FileClipboard.cut(selectedFileEntities); viewModel.clearSelection() },
+                onDeleteSelected = { viewModel.deleteFiles(selectedFileEntities) }
             )
         }
     }
