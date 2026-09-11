@@ -28,13 +28,9 @@ interface FileDao {
     @Query("DELETE FROM files WHERE path IN (:paths)")
     suspend fun deleteByPaths(paths: List<String>)
 
-    // Untuk hapus 1 file lewat FileActionSheet (beda dari deleteByPaths yang dipakai syncAll)
     @Query("DELETE FROM files WHERE path = :path")
     suspend fun deleteByPath(path: String)
 
-    // Update path & name sekaligus di database setelah file fisik berhasil di-rename.
-    // Rename file fisik (java.io.File.renameTo) dilakukan terpisah di luar DAO ini,
-    // fungsi ini cuma menyelaraskan data database supaya tetap akurat.
     @Query("UPDATE files SET path = :newPath, name = :newName WHERE path = :oldPath")
     suspend fun renamePath(oldPath: String, newPath: String, newName: String)
 
@@ -42,12 +38,8 @@ interface FileDao {
     suspend fun syncAll(newFiles: List<FileEntity>): List<String> {
         val existing = getAllOnce().associateBy { it.path }
         val newMap = newFiles.associateBy { it.path }
-
-        // hanya file yang benar-benar baru atau berubah (beda size/lastModified) yang ditulis ulang
         val toUpsert = newFiles.filter { nf -> existing[nf.path] != nf }
-        // file yang sudah tidak ada lagi di storage dihapus dari tabel
         val toDelete = existing.keys - newMap.keys
-
         if (toUpsert.isNotEmpty()) insertAll(toUpsert)
         if (toDelete.isNotEmpty()) deleteByPaths(toDelete.toList())
         return toDelete.toList()
@@ -65,8 +57,6 @@ interface FileDao {
     @Query("SELECT * FROM files WHERE extension IN ('jpg','jpeg','png','webp','gif') ORDER BY lastModified DESC")
     fun getImagesPaged(): PagingSource<Int, FileEntity>
 
-    // Versi ringan (bukan paging) - cuma dipakai untuk pengelompokan per folder,
-    // datanya kecil (nama/path saja) jadi aman diambil sekaligus walau jumlah foto banyak.
     @Query("SELECT * FROM files WHERE extension IN ('jpg','jpeg','png','webp','gif') ORDER BY lastModified DESC")
     fun getImages(): Flow<List<FileEntity>>
 
@@ -75,4 +65,41 @@ interface FileDao {
 
     @Query("SELECT * FROM files WHERE extension IN ('mp3','wav','m4a','ogg','flac','aac') ORDER BY lastModified DESC")
     fun getAudios(): Flow<List<FileEntity>>
+
+    // === Ditambahkan untuk accordion galeri Gambar (Tahun -> Bulan -> Tanggal) ===
+
+    @Query("""
+        SELECT strftime('%d', lastModified/1000, 'unixepoch', 'localtime') AS day, COUNT(*) AS count
+        FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y-%m', lastModified/1000, 'unixepoch', 'localtime') = :yearMonth
+        GROUP BY day
+        ORDER BY day DESC
+    """)
+    suspend fun countPhotosPerDayInMonth(yearMonth: String): List<DayCount>
+
+    @Query("""
+        SELECT strftime('%Y-%m', lastModified/1000, 'unixepoch', 'localtime') AS yearMonth, COUNT(*) AS count
+        FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y', lastModified/1000, 'unixepoch', 'localtime') = :year
+          AND strftime('%Y-%m', lastModified/1000, 'unixepoch', 'localtime') != :currentYearMonth
+        GROUP BY yearMonth
+        ORDER BY yearMonth DESC
+    """)
+    suspend fun countPhotosPerMonthInYear(year: String, currentYearMonth: String): List<MonthCount>
+
+    @Query("""
+        SELECT strftime('%Y', lastModified/1000, 'unixepoch', 'localtime') AS year, COUNT(*) AS count
+        FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y', lastModified/1000, 'unixepoch', 'localtime') != :currentYear
+        GROUP BY year
+        ORDER BY year DESC
+    """)
+    suspend fun countPhotosPerYear(currentYear: String): List<YearCount>
 }
+
+data class DayCount(val day: String, val count: Int)
+data class MonthCount(val yearMonth: String, val count: Int)
+data class YearCount(val year: String, val count: Int)

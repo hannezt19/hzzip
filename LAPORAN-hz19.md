@@ -48,3 +48,30 @@ Investigasi ulang bug header bulan mode Terbaru (dikonfirmasi hz11 tetap tanggun
 - Investigasi bug header bulan hilang: dicoba fix dengan menambah `contentType` di `items()` grid (dugaan: Compose salah daur-ulang slot tampilan antara Header dan Photo saat Paging menambah halaman baru). Build sukses, TAPI tidak memperbaiki bug (dikonfirmasi user - bulan lain masih tidak ada header sama sekali). Investigasi dihentikan sementara.
 - Catatan untuk siapa pun yang lanjut investigasi ini nanti: 2 dugaan sudah dicoba dan terbukti SALAH - (1) soal `File.lastModified()` vs EXIF, (2) soal `contentType`/daur-ulang slot Compose. Perlu sudut analisis baru, jangan ulangi dua ini.
 - Koordinasi `ImageThumbnail` + `FileActionSheet` dengan hz25: masih berlaku kesepakatan sebelumnya (hz19 tinggal tunggu patch dari hz25), belum ada perubahan.
+
+## 2026-09-11
+
+### Update status bug lama
+Bug header bulan hilang: DIKONFIRMASI ULANG MASIH AKTIF. Cross-check langsung ke kode `HomeViewModel.kt` (baik branch lama hz19 maupun main) - masih pakai `monthLabelOf` (per-bulan), bukan `dayLabelOf` per-hari. Catatan progress sebelumnya yang menyebut ini "sudah difix" ternyata keliru, fix itu tidak pernah ter-commit. 2 dugaan lama tetap terbukti salah: (1) File.lastModified() vs EXIF, (2) contentType/daur-ulang slot Compose - jangan diulang.
+
+### Keputusan baru: desain accordion galeri final (mode Terbaru)
+Struktur berlapis Tahun -> Bulan -> Tanggal, menggantikan rencana fix per-hari sebelumnya karena sekaligus menghilangkan akar bug (bulan lama tidak lagi lewat insertSeparators/Paging3):
+- Bulan berjalan: semua tanggal tampil langsung (format "11 Sept"), jumlah foto di sebelah kanan tiap baris
+- Bulan lalu (tahun sama): dilipat jadi 1 baris "NamaBulan — jumlah", tap untuk buka daftar tanggal
+- Tahun lalu: dilipat jadi 1 baris "Tahun — jumlah", tap buka daftar bulan, tap bulan buka daftar tanggal
+- Mode Folder tidak berubah
+
+### Progress: query hitung jumlah foto (langkah 1 rencana accordion)
+Ditambahkan ke `FileDao.kt`: `countPhotosPerDayInMonth`, `countPhotosPerMonthInYear`, `countPhotosPerYear` (+ data class `DayCount`/`MonthCount`/`YearCount`). Pakai `strftime` pada kolom `lastModified` (epoch ms) + modifier `'localtime'`, filter `extension IN ('jpg','jpeg','png','webp','gif')`.
+Status: [PROSES] - patch ditempel ke branch main, MENUNGGU build & tes di HP dikonfirmasi (build sebelumnya sempat sukses tapi itu di branch hz19 lama yang sudah ditinggalkan, jadi perlu dites ulang di main).
+
+### Rencana kerja & file terkait (aktif)
+1. [PROSES] Query hitung foto per grup (FileDao.kt, di main) - tinggal tes build
+2. [BELUM] Susun bentuk data 3 jenis baris tampilan (tanggal biasa / ringkasan bulan / ringkasan tahun)
+3. [BELUM] Sambungkan ke ViewModel - bulan berjalan tetap via Paging3, bulan/tahun lalu pakai jalur data ringan terpisah + state buka/tutup accordion di ViewModel
+4. [BELUM] UI + logika tap buka/tutup
+5. [BELUM] Tes dengan data asli ~23rb foto
+6. [BELUM] Sticky header & Fast Scroller (menyusul setelah accordion final stabil)
+
+### Catatan workflow
+Sejak 11 Sept, semua kerja pindah ke branch main (branch per-akun dihapus, resmi di CONVENTIONS.md). Update ini adalah update pertama ke LAPORAN-hz19.md di branch main - update sebelumnya (yang sempat ditulis 2x) ada di branch `hz19` lama yang sekarang ditinggalkan.
