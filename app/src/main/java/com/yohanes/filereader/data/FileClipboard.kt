@@ -7,28 +7,31 @@ import kotlinx.coroutines.flow.asStateFlow
 enum class ClipboardOp { COPY, CUT }
 
 data class ClipboardState(
-    val file: FileEntity? = null,
+    val files: List<FileEntity> = emptyList(),
     val op: ClipboardOp? = null
 ) {
-    val isEmpty: Boolean get() = file == null
+    val isEmpty: Boolean get() = files.isEmpty()
 }
 
 /**
- * Singleton penyimpanan status salin/potong 1 file, dipakai bareng
- * FileActionSheet (Salin/Potong) dan DirektoriScreen (tombol Tempel).
- * Sengaja cuma simpan 1 file (belum multi-select, sesuai keputusan
- * Tugas 2 - multi-select ditunda ke tahap berikutnya).
+ * Singleton penyimpanan status salin/potong, dipakai bareng FileActionSheet
+ * (1 file, dari long-press biasa) dan mode multi-select (banyak file sekaligus).
+ * Fungsi copy/cut lama (1 file) dipertahankan sebagai overload untuk kompatibilitas
+ * pemanggil yang sudah ada.
  */
 object FileClipboard {
     private val _state = MutableStateFlow(ClipboardState())
     val state: StateFlow<ClipboardState> = _state.asStateFlow()
 
-    fun copy(file: FileEntity) {
-        _state.value = ClipboardState(file, ClipboardOp.COPY)
+    fun copy(file: FileEntity) { copy(listOf(file)) }
+    fun cut(file: FileEntity) { cut(listOf(file)) }
+
+    fun copy(files: List<FileEntity>) {
+        _state.value = ClipboardState(files, ClipboardOp.COPY)
     }
 
-    fun cut(file: FileEntity) {
-        _state.value = ClipboardState(file, ClipboardOp.CUT)
+    fun cut(files: List<FileEntity>) {
+        _state.value = ClipboardState(files, ClipboardOp.CUT)
     }
 
     fun clear() {

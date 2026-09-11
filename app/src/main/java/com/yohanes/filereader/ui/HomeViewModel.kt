@@ -200,6 +200,41 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _selectedCategoryFolderPath.value = _selectedCategoryFolderPath.value + (category to path)
     }
 
+    // ==== Mode multi-select (Tahap 2) ====
+    // Set path file yang sedang dipilih. Tidak kosong = mode pilih aktif.
+    private val _selectedPaths = MutableStateFlow<Set<String>>(emptySet())
+    val selectedPaths: StateFlow<Set<String>> = _selectedPaths
+    val isSelectionMode: StateFlow<Boolean> = _selectedPaths
+        .map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun toggleSelect(file: FileEntity) {
+        val current = _selectedPaths.value
+        _selectedPaths.value = if (current.contains(file.path)) current - file.path else current + file.path
+    }
+
+    fun startSelection(file: FileEntity) {
+        _selectedPaths.value = setOf(file.path)
+    }
+
+    fun clearSelection() {
+        _selectedPaths.value = emptySet()
+    }
+
+    // Hapus banyak file fisik sekaligus, baru selaraskan database untuk yang berhasil.
+    fun deleteFiles(files: List<FileEntity>) {
+        viewModelScope.launch {
+            val deletedPaths = withContext(Dispatchers.IO) {
+                files.filter { java.io.File(it.path).delete() }.map { it.path }
+            }
+            if (deletedPaths.isNotEmpty()) {
+                withContext(Dispatchers.IO) { dao.deleteByPaths(deletedPaths) }
+                notifyFileOpsChanged()
+            }
+            clearSelection()
+        }
+    }
+
     // File mana yang lagi dibuka menu titik-tiganya (FileActionSheet). null = tidak ada yang kebuka.
     private val _actionSheetFile = MutableStateFlow<FileEntity?>(null)
     val actionSheetFile: StateFlow<FileEntity?> = _actionSheetFile

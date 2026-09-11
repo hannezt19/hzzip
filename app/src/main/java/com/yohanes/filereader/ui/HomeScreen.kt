@@ -376,7 +376,7 @@ private fun DirektoriScreen(
     }
 
     if (!clipboardState.isEmpty) {
-        val cbFile = clipboardState.file
+        val cbFile = clipboardState.files.firstOrNull()
         val cbOp = clipboardState.op
         Row(
             modifier = Modifier
