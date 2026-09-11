@@ -350,7 +350,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                 }
                             }
                         }
-                        if (!modeBacaActive) {
+                        if (false && !modeBacaActive) {
                             val liveScrollZoom = rememberUpdatedState(scrollZoom)
                             val liveScrollOffsetX = rememberUpdatedState(scrollOffsetX)
                             val liveScrollOffsetY = rememberUpdatedState(scrollOffsetY)
