@@ -39,3 +39,7 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 ## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 2)
 - [PROSES] Checkpoint 1 (fondasi): FileClipboard diperluas jadi List<FileEntity>, state selectedPaths/isSelectionMode/toggleSelect/startSelection/clearSelection/deleteFiles di HomeViewModel. Build hijau, sudah push.
 - [PROSES] Checkpoint 2: aksi baru "Pilih" di FileActionSheet - masuk mode-pilih dari long-press biasa (tidak mengganti perilaku FileActionSheet yang sudah ada). Menunggu build.
+
+## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 3)
+- [PROSES] Checkpoint 3: file baru SelectionBar.kt (SelectionTopBar + SelectionActionBar, reusable). Wiring penuh ke DirektoriScreen: tap toggle pilih, highlight+centang di FileRow, Tempel loop banyak file, BackHandler keluar mode-pilih dulu. Menunggu build+tes di HP.
+- Rencana lanjut: wiring sama ke VideoGalleryScreen, ImageGalleryScreen, FileListWithModeToggle (PDF/Excel/Teks/Favorit) di checkpoint berikutnya.

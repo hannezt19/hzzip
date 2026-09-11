@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -274,6 +275,10 @@ private fun DirektoriScreen(
     var currentDir by remember { mutableStateOf(java.io.File(rootPath)) }
 
     BackHandler(enabled = true) {
+        if (isSelectionMode) {
+            viewModel.clearSelection()
+            return@BackHandler
+        }
         val parent = currentDir.parentFile
         if (currentDir.path != rootPath && parent != null) {
             currentDir = parent
@@ -292,6 +297,20 @@ private fun DirektoriScreen(
 
     val clipboardState by FileClipboard.state.collectAsState()
     val scope = rememberCoroutineScope()
+    val selectedPaths by viewModel.selectedPaths.collectAsState()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+    val selectedFileEntities = remember(entries, selectedPaths) {
+        entries.filter { !it.isDirectory && selectedPaths.contains(it.absolutePath) }
+            .map { entry ->
+                FileEntity(
+                    path = entry.absolutePath,
+                    name = entry.name,
+                    extension = entry.extension.lowercase(),
+                    sizeBytes = entry.length(),
+                    lastModified = entry.lastModified()
+                )
+            }
+    }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -366,7 +385,10 @@ private fun DirektoriScreen(
                         )
                         FileRow(
                             file = fileEntity,
-                            onClick = { onFileClick(fileEntity) },
+                            isSelected = selectedPaths.contains(fileEntity.path),
+                            onClick = {
+                                if (isSelectionMode) viewModel.toggleSelect(fileEntity) else onFileClick(fileEntity)
+                            },
                             onLongClick = { onFileLongClick(fileEntity) }
                         )
                     }
@@ -376,8 +398,29 @@ private fun DirektoriScreen(
         }
     }
 
-    if (!clipboardState.isEmpty) {
-        val cbFile = clipboardState.files.firstOrNull()
+    if (isSelectionMode) {
+        SelectionTopBar(
+            count = selectedPaths.size,
+            onClose = { viewModel.clearSelection() },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+        SelectionActionBar(
+            selectedCount = selectedFileEntities.size,
+            onCopy = {
+                FileClipboard.copy(selectedFileEntities)
+                viewModel.clearSelection()
+            },
+            onCut = {
+                FileClipboard.cut(selectedFileEntities)
+                viewModel.clearSelection()
+            },
+            onDeleteConfirmed = { viewModel.deleteFiles(selectedFileEntities) },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+
+    if (!isSelectionMode && !clipboardState.isEmpty) {
+        val cbFiles = clipboardState.files
         val cbOp = clipboardState.op
         Row(
             modifier = Modifier
@@ -387,32 +430,37 @@ private fun DirektoriScreen(
                 .clip(RoundedCornerShape(50))
                 .background(MaterialTheme.colorScheme.primary)
                 .clickable {
-                    if (cbFile != null && cbOp != null) {
-                        val sourceFile = java.io.File(cbFile.path)
+                    if (cbFiles.isNotEmpty() && cbOp != null) {
                         scope.launch {
-                            val success = withContext(Dispatchers.IO) {
-                                try {
-                                    val destFile = uniqueDestFile(currentDir, sourceFile.name)
-                                    when (cbOp) {
-                                        ClipboardOp.COPY -> {
-                                            sourceFile.copyTo(destFile)
-                                            true
-                                        }
-                                        ClipboardOp.CUT -> {
-                                            if (sourceFile.renameTo(destFile)) {
-                                                true
-                                            } else {
+                            val anySuccess = withContext(Dispatchers.IO) {
+                                var success = false
+                                cbFiles.forEach { cbFile ->
+                                    try {
+                                        val sourceFile = java.io.File(cbFile.path)
+                                        val destFile = uniqueDestFile(currentDir, sourceFile.name)
+                                        when (cbOp) {
+                                            ClipboardOp.COPY -> {
                                                 sourceFile.copyTo(destFile)
-                                                sourceFile.delete()
+                                                success = true
+                                            }
+                                            ClipboardOp.CUT -> {
+                                                if (sourceFile.renameTo(destFile)) {
+                                                    success = true
+                                                } else {
+                                                    sourceFile.copyTo(destFile)
+                                                    sourceFile.delete()
+                                                    success = true
+                                                }
                                             }
                                         }
+                                    } catch (e: Exception) {
+                                        // lanjut ke file berikutnya walau satu gagal
                                     }
-                                } catch (e: Exception) {
-                                    false
                                 }
+                                success
                             }
                             FileClipboard.clear()
-                            if (success) viewModel.notifyFileOpsChanged()
+                            if (anySuccess) viewModel.notifyFileOpsChanged()
                         }
                     }
                 }
@@ -421,7 +469,7 @@ private fun DirektoriScreen(
         ) {
             Icon(Icons.Filled.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
             Spacer(Modifier.width(8.dp))
-            Text("Tempel", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
+            Text(if (cbFiles.size > 1) "Tempel (${cbFiles.size})" else "Tempel", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
         }
     }
     }
@@ -640,10 +688,11 @@ private fun CategoryDetailScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FileRow(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun FileRow(file: FileEntity, isSelected: Boolean = false, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
             .padding(16.dp, 12.dp)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically
@@ -656,6 +705,9 @@ private fun FileRow(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Un
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        if (isSelected) {
+            Icon(Icons.Filled.CheckCircle, contentDescription = "Dipilih", tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
