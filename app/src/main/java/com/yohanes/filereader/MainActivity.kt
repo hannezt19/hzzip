@@ -36,6 +36,8 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+private const val TELEPHOTO_TEST_MODE = true // set false setelah selesai tes
+
 class MainActivity : ComponentActivity() {
 
     // State dipegang di luar Compose supaya gampang diakses dari launcher/onNewIntent
@@ -154,6 +156,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     @Composable
     private fun AppRoot() {
+    // === MODE UJI COBA TELEPHOTO - HAPUS/UBAH KE false SETELAH SELESAI TES ===
+    if (TELEPHOTO_TEST_MODE) {
+        com.yohanes.filereader.ui.TelephotoTestScreen()
+        return
+    }
     val context = androidx.compose.ui.platform.LocalContext.current
     var permissionGranted by remember { mutableStateOf(com.yohanes.filereader.permission.hasStoragePermission()) }
 
