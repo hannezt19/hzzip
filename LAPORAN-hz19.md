@@ -48,3 +48,27 @@ Investigasi ulang bug header bulan mode Terbaru (dikonfirmasi hz11 tetap tanggun
 - Investigasi bug header bulan hilang: dicoba fix dengan menambah `contentType` di `items()` grid (dugaan: Compose salah daur-ulang slot tampilan antara Header dan Photo saat Paging menambah halaman baru). Build sukses, TAPI tidak memperbaiki bug (dikonfirmasi user - bulan lain masih tidak ada header sama sekali). Investigasi dihentikan sementara.
 - Catatan untuk siapa pun yang lanjut investigasi ini nanti: 2 dugaan sudah dicoba dan terbukti SALAH - (1) soal `File.lastModified()` vs EXIF, (2) soal `contentType`/daur-ulang slot Compose. Perlu sudut analisis baru, jangan ulangi dua ini.
 - Koordinasi `ImageThumbnail` + `FileActionSheet` dengan hz25: masih berlaku kesepakatan sebelumnya (hz19 tinggal tunggu patch dari hz25), belum ada perubahan.
+
+## 2026-09-11
+
+### Update status bug lama
+Bug header bulan hilang (tercatat aktif di laporan sebelumnya) sudah TERATASI - fix dengan mengganti pengelompokan header dari per-bulan jadi per-hari (fungsi `dayLabelOf`: "Hari ini"/"Kemarin"/nama hari/tanggal harian). Dikonfirmasi user. Akar masalah kemungkinan besar: `insertSeparators` Paging3 (pageSize=60) kesulitan kalau jarak antar boundary header kejauhan.
+
+### Keputusan baru: desain accordion galeri final (mode Terbaru)
+Struktur berlapis Tahun -> Bulan -> Tanggal:
+- Bulan berjalan: semua tanggal tampil langsung (format "11 Sept", tanpa label "Hari ini"/"Kemarin"), jumlah foto tampil di sebelah kanan tiap baris
+- Bulan lalu (tahun sama): dilipat jadi 1 baris "NamaBulan — jumlah", tap untuk buka jadi daftar tanggal
+- Tahun lalu: dilipat jadi 1 baris "Tahun — jumlah", tap buka jadi daftar bulan, tap bulan buka jadi daftar tanggal
+- Mode Folder tidak berubah
+
+### Progress: query hitung jumlah foto (langkah 1 rencana accordion)
+Ditambahkan ke `FileDao.kt`: `countPhotosPerDayInMonth`, `countPhotosPerMonthInYear`, `countPhotosPerYear` (+ data class `DayCount`/`MonthCount`/`YearCount`). Pakai `strftime` pada kolom `lastModified` (epoch ms) dengan modifier `'localtime'`, filter `extension IN ('jpg','jpeg','png','webp','gif')` konsisten dengan query gambar lain di file ini.
+Status: [PROSES] - patch sudah ditempel, MENUNGGU build & tes di HP.
+
+### Rencana kerja & file terkait (aktif)
+1. [PROSES] Query hitung foto per grup (FileDao.kt) - tinggal tes build
+2. [BELUM] Susun bentuk data 3 jenis baris tampilan (tanggal biasa / ringkasan bulan / ringkasan tahun)
+3. [BELUM] Sambungkan ke ViewModel - bulan berjalan tetap via Paging3, bulan/tahun lalu pakai jalur data ringan terpisah + state buka/tutup accordion di ViewModel
+4. [BELUM] UI + logika tap buka/tutup
+5. [BELUM] Tes dengan data asli ~23rb foto
+6. [BELUM] Sticky header & Fast Scroller (menyusul setelah accordion final stabil)
