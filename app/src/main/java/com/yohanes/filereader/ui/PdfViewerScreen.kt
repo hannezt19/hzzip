@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.collectAsState
@@ -392,21 +393,23 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                             } while (event.changes.any { it.pressed })
                                         }
                                     }
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onTap = { settingsModalOpen = true },
-                                            onDoubleTap = {
-                                                if (liveScrollZoom.value > 1f) {
-                                                    scrollZoom = 1f
-                                                    scrollOffsetX = 0f
-                                                    scrollOffsetY = 0f
-                                                } else {
-                                                    scrollZoom = 2.5f
-                                                }
-                                            }
-                                        )
-                                    }
                             )
+                            IconButton(
+                                onClick = { settingsModalOpen = true },
+                                modifier = Modifier
+                                    .align(androidx.compose.ui.Alignment.BottomEnd)
+                                    .padding(20.dp)
+                                    .background(
+                                        androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
+                                        androidx.compose.foundation.shape.CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Filled.Settings,
+                                    contentDescription = "Pengaturan",
+                                    tint = androidx.compose.ui.graphics.Color.White
+                                )
+                            }
                         }
                     }
                 }
