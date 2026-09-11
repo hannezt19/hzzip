@@ -314,7 +314,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                             state = scrollListState,
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(pageCount) { pageIndex ->
+                            items(pageCount, key = { it }) { pageIndex ->
                                 if (modeBacaActive) {
                                     ReflowPage(
                                         uri = uri,
@@ -334,12 +334,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                         ScrollPdfPage(
                                             uri = uri,
                                             pageIndex = pageIndex,
-                                            onTap = { settingsModalOpen = true },
-                                            sharedZoom = scrollZoom,
-                                            onSharedZoomChange = { scrollZoom = it },
-                                            sharedOffsetX = scrollOffsetX,
-                                            sharedOffsetY = scrollOffsetY,
-                                            onSharedOffsetChange = { x, y -> scrollOffsetX = x; scrollOffsetY = y }
+                                            onTap = { settingsModalOpen = true }
                                         )
                                         if (pageIndex < pageCount - 1) {
                                             HorizontalDivider(
@@ -1207,7 +1202,7 @@ private fun ZoomableImageBox(
 }
 
 @Composable
-private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float, onSharedZoomChange: (Float) -> Unit, sharedOffsetX: Float, sharedOffsetY: Float, onSharedOffsetChange: (Float, Float) -> Unit) {
+private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null, sharedOffsetX: Float? = null, sharedOffsetY: Float? = null, onSharedOffsetChange: ((Float, Float) -> Unit)? = null) {
     val context = LocalContext.current
     var aspect by remember(pageIndex) { mutableFloatStateOf(0.7071f) }
 
