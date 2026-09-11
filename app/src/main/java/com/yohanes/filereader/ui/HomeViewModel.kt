@@ -207,8 +207,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val isSelectionMode: StateFlow<Boolean> = selectedPaths
         .map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun toggleSelect(file: FileEntity) {
         val current = _selectedPaths.value
