@@ -649,6 +649,13 @@ private fun CategoryDetailScreen(
             val images by viewModel.images.collectAsState()
             val imageMode by viewModel.imageGalleryMode.collectAsState()
             val selectedImageFolder by viewModel.selectedImageFolderPath.collectAsState()
+            val pastMonthsInCurrentYear by viewModel.pastMonthsInCurrentYear.collectAsState()
+            val pastYears by viewModel.pastYears.collectAsState()
+            val expandedMonthKey by viewModel.expandedMonthKey.collectAsState()
+            val daysForExpandedMonth by viewModel.daysForExpandedMonth.collectAsState()
+            val expandedYear by viewModel.expandedYear.collectAsState()
+            val monthsForExpandedYear by viewModel.monthsForExpandedYear.collectAsState()
+            val selectedDatePhotos by viewModel.selectedDatePhotos.collectAsState()
             ImageGalleryScreen(
                 imagesFlow = viewModel.imagesPaged,
                 images = images,
@@ -657,7 +664,19 @@ private fun CategoryDetailScreen(
                 selectedFolderPath = selectedImageFolder,
                 onFolderSelected = { viewModel.selectImageFolder(it) },
                 onFileClick = onFileClick,
-                onFileLongClick = onFileLongClick
+                onFileLongClick = onFileLongClick,
+                pastMonthsInCurrentYear = pastMonthsInCurrentYear,
+                pastYears = pastYears,
+                expandedMonthKey = expandedMonthKey,
+                daysForExpandedMonth = daysForExpandedMonth,
+                expandedYear = expandedYear,
+                monthsForExpandedYear = monthsForExpandedYear,
+                selectedDatePhotos = selectedDatePhotos,
+                onToggleMonth = { viewModel.toggleAccordionMonth(it) },
+                onToggleYear = { viewModel.toggleAccordionYear(it) },
+                onSelectDate = { ym, d -> viewModel.selectAccordionDate(ym, d) },
+                onClearSelectedDate = { viewModel.clearSelectedAccordionDate() },
+                onLoadAccordionSummaries = { viewModel.loadImageAccordionSummaries() }
             )
         } else if (category == "Video") {
             val videos by viewModel.videos.collectAsState()

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +56,61 @@ private data class ImageFolderGroup(val path: String, val photos: List<FileEntit
     val label: String get() = path.substringAfterLast('/')
 }
 
+private data class AccordionRow(
+    val key: String,
+    val label: String,
+    val count: Int,
+    val indent: Int,
+    val onClick: () -> Unit
+)
+
+private fun monthNameFromYearMonth(yearMonth: String): String {
+    return java.time.YearMonth.parse(yearMonth)
+        .format(java.time.format.DateTimeFormatter.ofPattern("MMMM", java.util.Locale("id", "ID")))
+        .replaceFirstChar { it.uppercase() }
+}
+
+private fun dayRowLabel(day: String, yearMonth: String): String {
+    val date = java.time.LocalDate.parse("$yearMonth-$day")
+    return date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale("id", "ID")))
+}
+
+private fun buildAccordionRows(
+    pastMonths: List<com.yohanes.filereader.data.MonthCount>,
+    pastYears: List<com.yohanes.filereader.data.YearCount>,
+    expandedMonthKey: String?,
+    daysForExpandedMonth: List<com.yohanes.filereader.data.DayCount>,
+    expandedYear: String?,
+    monthsForExpandedYear: List<com.yohanes.filereader.data.MonthCount>,
+    onToggleMonth: (String) -> Unit,
+    onToggleYear: (String) -> Unit,
+    onSelectDate: (String, String) -> Unit
+): List<AccordionRow> {
+    val rows = mutableListOf<AccordionRow>()
+    for (m in pastMonths) {
+        rows += AccordionRow("month_" + m.yearMonth, monthNameFromYearMonth(m.yearMonth), m.count, 0) { onToggleMonth(m.yearMonth) }
+        if (expandedMonthKey == m.yearMonth) {
+            for (d in daysForExpandedMonth) {
+                rows += AccordionRow("day_" + m.yearMonth + "-" + d.day, dayRowLabel(d.day, m.yearMonth), d.count, 1) { onSelectDate(m.yearMonth, d.day) }
+            }
+        }
+    }
+    for (y in pastYears) {
+        rows += AccordionRow("year_" + y.year, y.year, y.count, 0) { onToggleYear(y.year) }
+        if (expandedYear == y.year) {
+            for (mo in monthsForExpandedYear) {
+                rows += AccordionRow("yearmonth_" + mo.yearMonth, monthNameFromYearMonth(mo.yearMonth), mo.count, 1) { onToggleMonth(mo.yearMonth) }
+                if (expandedMonthKey == mo.yearMonth) {
+                    for (d in daysForExpandedMonth) {
+                        rows += AccordionRow("yearday_" + mo.yearMonth + "-" + d.day, dayRowLabel(d.day, mo.yearMonth), d.count, 2) { onSelectDate(mo.yearMonth, d.day) }
+                    }
+                }
+            }
+        }
+    }
+    return rows
+}
+
 @Composable
 fun ImageGalleryScreen(
     imagesFlow: Flow<PagingData<GalleryItem>>,
@@ -63,7 +120,19 @@ fun ImageGalleryScreen(
     selectedFolderPath: String?,
     onFolderSelected: (String?) -> Unit,
     onFileClick: (FileEntity) -> Unit,
-    onFileLongClick: (FileEntity) -> Unit
+    onFileLongClick: (FileEntity) -> Unit,
+    pastMonthsInCurrentYear: List<com.yohanes.filereader.data.MonthCount>,
+    pastYears: List<com.yohanes.filereader.data.YearCount>,
+    expandedMonthKey: String?,
+    daysForExpandedMonth: List<com.yohanes.filereader.data.DayCount>,
+    expandedYear: String?,
+    monthsForExpandedYear: List<com.yohanes.filereader.data.MonthCount>,
+    selectedDatePhotos: List<FileEntity>?,
+    onToggleMonth: (String) -> Unit,
+    onToggleYear: (String) -> Unit,
+    onSelectDate: (String, String) -> Unit,
+    onClearSelectedDate: () -> Unit,
+    onLoadAccordionSummaries: () -> Unit
 ) {
     var pagerIndex by remember { mutableStateOf<Int?>(null) }
     var pagerPhotos by remember { mutableStateOf<List<FileEntity>>(emptyList()) }
@@ -79,6 +148,47 @@ fun ImageGalleryScreen(
 
     BackHandler(enabled = mode == VideoGalleryMode.FOLDER && selectedFolderPath != null) {
         onFolderSelected(null)
+    }
+
+    LaunchedEffect(Unit) {
+        onLoadAccordionSummaries()
+    }
+
+    if (selectedDatePhotos != null) {
+        BackHandler { onClearSelectedDate() }
+        Box(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(4.dp, 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onClearSelectedDate) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                    }
+                    Text("Tanggal terpilih", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                }
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(4.dp)
+                ) {
+                    items(selectedDatePhotos, key = { it.path }) { file ->
+                        ImageThumbnail(
+                            file = file,
+                            onLongClick = { onFileLongClick(file) },
+                            onClick = {
+                                val idx = selectedDatePhotos.indexOfFirst { it.path == file.path }
+                                if (idx >= 0) {
+                                    pagerPhotos = selectedDatePhotos
+                                    pagerIndex = idx
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        return
     }
 
     // Mode Folder - pengelompokan ringan (cuma daftar nama file, bukan buka semua gambar
@@ -148,6 +258,20 @@ fun ImageGalleryScreen(
     // Mode Terbaru - tetap pakai sistem paging yang sudah ada (ringan untuk koleksi besar).
     val pagingItems = imagesFlow.collectAsLazyPagingItems()
 
+    val accordionRows = remember(pastMonthsInCurrentYear, pastYears, expandedMonthKey, daysForExpandedMonth, expandedYear, monthsForExpandedYear) {
+        buildAccordionRows(
+            pastMonths = pastMonthsInCurrentYear,
+            pastYears = pastYears,
+            expandedMonthKey = expandedMonthKey,
+            daysForExpandedMonth = daysForExpandedMonth,
+            expandedYear = expandedYear,
+            monthsForExpandedYear = monthsForExpandedYear,
+            onToggleMonth = onToggleMonth,
+            onToggleYear = onToggleYear,
+            onSelectDate = onSelectDate
+        )
+    }
+
     Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
@@ -177,13 +301,18 @@ fun ImageGalleryScreen(
             ) { index ->
                 when (val item = pagingItems[index]) {
                     is GalleryItem.Header -> {
-                        Text(
-                            text = item.label,
-                            style = MaterialTheme.typography.titleSmall,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 8.dp)
-                        )
+                                .height(96.dp)
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
                     }
                     is GalleryItem.Photo -> {
                         ImageThumbnail(
@@ -202,6 +331,29 @@ fun ImageGalleryScreen(
                         )
                     }
                     null -> {}
+                }
+            }
+            items(accordionRows, key = { it.key }, span = { GridItemSpan(maxLineSpan) }) { row ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                        .padding(start = (16 + row.indent * 16).dp, end = 16.dp)
+                        .clickable { row.onClick() },
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(row.label, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "${row.count}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

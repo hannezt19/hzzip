@@ -92,3 +92,17 @@ Status: [PROSES] - patch ditempel, MENUNGGU build & tes di HP. Alur tap: tahun -
 3. [BELUM] UI ImageGalleryScreen.kt: render baris ringkasan bulan/tahun (dengan jumlah foto di kanan) di bawah grid bulan berjalan, sambungkan tap ke fungsi toggle/select ViewModel, tampilkan grid saat selectedDatePhotos terisi (pola sama seperti selectedFolder)
 4. [BELUM] Tes dengan data asli ~23rb foto
 5. [BELUM] Sticky header & Fast Scroller (menyusul setelah accordion final stabil)
+
+## 2026-09-11 (lanjutan 2) - Checkpoint langkah 3 (UI accordion)
+
+### Progress
+- ImageGalleryScreen.kt: tambah render baris ringkasan bulan/tahun lalu (jumlah foto di kanan) setelah grid bulan berjalan, tap untuk toggle expand, tap tanggal untuk buka grid foto (selectedDatePhotos, pola sama seperti selectedFolder). Header tanggal & baris accordion dibuat tinggi 96dp (jarak diperlebar sesuai permintaan user, mendekati tinggi 1 baris foto)
+- HomeScreen.kt: sambungkan 7 StateFlow accordion baru dari ViewModel + 5 fungsi callback ke ImageGalleryScreen
+Status: [PROSES] - patch ditempel, MENUNGGU build & tes di HP
+
+### Rencana kerja & file terkait (aktif)
+1. [SELESAI] Query hitung foto per grup (FileDao.kt)
+2. [SELESAI] Backend accordion (FileDao.kt query tambahan + HomeViewModel.kt state)
+3. [PROSES] UI accordion (ImageGalleryScreen.kt + HomeScreen.kt) - tinggal tes build
+4. [BELUM] Tes dengan data asli ~23rb foto
+5. [BELUM] Sticky header & Fast Scroller
