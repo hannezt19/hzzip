@@ -1116,7 +1116,7 @@ private fun ZoomableImageBox(
     Box(
         Modifier
             .fillMaxSize()
-            .then(if (clipOwnBounds) Modifier.clipToBounds() else Modifier)
+            .clipToBounds()
             .onGloballyPositioned { coordinates -> containerSize = coordinates.size }
             .then(
                 if (clipOwnBounds) Modifier
@@ -1277,7 +1277,7 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZ
         onTap = onTap,
         externalZoom = sharedZoom,
         onExternalZoomChange = onSharedZoomChange,
-        clipOwnBounds = true,
+        clipOwnBounds = sharedZoom == null,
         externalOffsetX = sharedOffsetX,
         externalOffsetY = sharedOffsetY,
         onExternalOffsetChange = onSharedOffsetChange

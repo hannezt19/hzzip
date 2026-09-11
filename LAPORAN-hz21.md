@@ -28,3 +28,6 @@ Perbaikan padding Beranda/kategori & toggle Video sudah dikonfirmasi selesai. Se
 
 ## Log Pencapaian
 - Fix bug PDF mode Scroll: halaman bertumpuk & tidak bisa scroll saat zoom vertikal. Penyebab: clipOwnBounds selalu false di mode Scroll (bocor ke halaman tetangga) + maxOffsetY pakai tinggi layar penuh (batas kepanjangan, gagal lepas kontrol ke scroll normal). Fix: clipOwnBounds selalu true, maxOffsetY dihitung dari lebar kontainer/aspect rasio standar halaman. Dikonfirmasi tes di HP.
+
+## Log Pencapaian
+- Revisi fix sebelumnya: clipOwnBounds=true ternyata ikut menyalakan gesture handler per-halaman yang dobel dengan overlay global, bikin scroll macet total (bahkan saat belum zoom). Diperbaiki: clipToBounds dipisah agar selalu aktif (cegah bertumpuk), tapi syarat gesture handler per-halaman dikembalikan seperti semula (hanya overlay global yang dengar sentuhan, cegah rebutan gesture).
