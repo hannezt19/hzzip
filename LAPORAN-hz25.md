@@ -32,3 +32,6 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 - 8 Sept: fix import `height` yang kelewat di `FileListWithModeToggle.kt`
 - 8 Sept: perluasan toggle Terbaru/Folder ke kategori Gambar (folder mode drill-down ala Video, mode Terbaru tidak diubah) - koordinasi dengan hz19 dikonfirmasi aman sebelum eksekusi
 - 8 Sept: fix posisi pill toggle Gambar (sempat di atas, seharusnya di bawah)
+
+## Update 11 Sept 2026 - Integrasi FileActionSheet ke ImageThumbnail (Gambar)
+- [PROSES] Patch ditulis: tambah onLongClick di ImageThumbnail (Gambar), pakai combinedClickable, wiring onFileLongClick dari HomeScreen ke ImageGalleryScreen di KEDUA mode (Terbaru & Folder). Pola persis meniru VideoThumbnail. Menunggu konfirmasi build hijau + tes di HP sebelum ditandai SELESAI.

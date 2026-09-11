@@ -607,7 +607,8 @@ private fun CategoryDetailScreen(
                 onModeChange = { viewModel.setImageGalleryMode(it) },
                 selectedFolderPath = selectedImageFolder,
                 onFolderSelected = { viewModel.selectImageFolder(it) },
-                onFileClick = onFileClick
+                onFileClick = onFileClick,
+                onFileLongClick = onFileLongClick
             )
         } else if (category == "Video") {
             val videos by viewModel.videos.collectAsState()

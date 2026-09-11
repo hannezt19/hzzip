@@ -2,7 +2,9 @@ package com.yohanes.filereader.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -60,7 +62,8 @@ fun ImageGalleryScreen(
     onModeChange: (VideoGalleryMode) -> Unit,
     selectedFolderPath: String?,
     onFolderSelected: (String?) -> Unit,
-    onFileClick: (FileEntity) -> Unit
+    onFileClick: (FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit
 ) {
     var pagerIndex by remember { mutableStateOf<Int?>(null) }
     var pagerPhotos by remember { mutableStateOf<List<FileEntity>>(emptyList()) }
@@ -111,6 +114,7 @@ fun ImageGalleryScreen(
                         items(selectedFolder.photos, key = { it.path }) { file ->
                             ImageThumbnail(
                                 file = file,
+                                onLongClick = { onFileLongClick(file) },
                                 onClick = {
                                     val idx = selectedFolder.photos.indexOfFirst { it.path == file.path }
                                     if (idx >= 0) {
@@ -184,6 +188,7 @@ fun ImageGalleryScreen(
                     is GalleryItem.Photo -> {
                         ImageThumbnail(
                             file = item.file,
+                            onLongClick = { onFileLongClick(item.file) },
                             onClick = {
                                 val photoList = pagingItems.itemSnapshotList.items
                                     .filterIsInstance<GalleryItem.Photo>()
@@ -305,14 +310,15 @@ private fun ImageFolderThumbnail(folder: ImageFolderGroup, onClick: () -> Unit) 
 }
 
 @Composable
-private fun ImageThumbnail(file: FileEntity, onClick: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun ImageThumbnail(file: FileEntity, onClick: () -> Unit, onLongClick: () -> Unit) {
     Box(
         modifier = Modifier
             .padding(2.dp)
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
