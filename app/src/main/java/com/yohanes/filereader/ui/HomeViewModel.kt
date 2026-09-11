@@ -47,6 +47,13 @@ private fun monthLabelOf(epochMillis: Long): String {
         .replaceFirstChar { it.uppercase() }
 }
 
+private fun dayLabelOf(epochMillis: Long): String {
+    val date = java.time.Instant.ofEpochMilli(epochMillis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDate()
+    return date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale("id", "ID")))
+}
+
 data class StorageInfo(val totalBytes: Long, val usedBytes: Long, val freeBytes: Long)
 
 fun getStorageInfo(): StorageInfo {
@@ -136,22 +143,93 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val currentYearMonth: String = java.time.YearMonth.now().toString()
+    private val currentYear: String = java.time.Year.now().toString()
+
+    // Bulan berjalan saja yang lewat Paging3 - bulan/tahun lama pakai ringkasan angka (di bawah)
     val imagesPaged: Flow<PagingData<GalleryItem>> = Pager(
         config = PagingConfig(pageSize = 60, prefetchDistance = 20, enablePlaceholders = false)
     ) {
-        dao.getImagesPaged()
+        dao.getImagesPagedForMonth(currentYearMonth)
     }.flow
         .map { pagingData ->
             pagingData
                 .map { GalleryItem.Photo(it) as GalleryItem }
                 .insertSeparators { before, after ->
                     val afterPhoto = after as? GalleryItem.Photo ?: return@insertSeparators null
-                    val afterLabel = monthLabelOf(afterPhoto.file.lastModified)
-                    val beforeLabel = (before as? GalleryItem.Photo)?.let { monthLabelOf(it.file.lastModified) }
+                    val afterLabel = dayLabelOf(afterPhoto.file.lastModified)
+                    val beforeLabel = (before as? GalleryItem.Photo)?.let { dayLabelOf(it.file.lastModified) }
                     if (beforeLabel != afterLabel) GalleryItem.Header(afterLabel) else null
                 }
         }
         .cachedIn(viewModelScope)
+
+    // === Accordion Tahun -> Bulan -> Tanggal untuk bulan/tahun lama ===
+    private val _pastMonthsInCurrentYear = MutableStateFlow<List<MonthCount>>(emptyList())
+    val pastMonthsInCurrentYear: StateFlow<List<MonthCount>> = _pastMonthsInCurrentYear
+
+    private val _pastYears = MutableStateFlow<List<YearCount>>(emptyList())
+    val pastYears: StateFlow<List<YearCount>> = _pastYears
+
+    private val _expandedMonthKey = MutableStateFlow<String?>(null)
+    val expandedMonthKey: StateFlow<String?> = _expandedMonthKey
+
+    private val _daysForExpandedMonth = MutableStateFlow<List<DayCount>>(emptyList())
+    val daysForExpandedMonth: StateFlow<List<DayCount>> = _daysForExpandedMonth
+
+    private val _expandedYear = MutableStateFlow<String?>(null)
+    val expandedYear: StateFlow<String?> = _expandedYear
+
+    private val _monthsForExpandedYear = MutableStateFlow<List<MonthCount>>(emptyList())
+    val monthsForExpandedYear: StateFlow<List<MonthCount>> = _monthsForExpandedYear
+
+    private val _selectedDatePhotos = MutableStateFlow<List<FileEntity>?>(null)
+    val selectedDatePhotos: StateFlow<List<FileEntity>?> = _selectedDatePhotos
+
+    fun loadImageAccordionSummaries() {
+        viewModelScope.launch {
+            _pastMonthsInCurrentYear.value = dao.countPhotosPerMonthInYear(currentYear, currentYearMonth)
+            _pastYears.value = dao.countPhotosPerYear(currentYear)
+        }
+    }
+
+    fun toggleAccordionMonth(yearMonth: String) {
+        if (_expandedMonthKey.value == yearMonth) {
+            _expandedMonthKey.value = null
+            _daysForExpandedMonth.value = emptyList()
+        } else {
+            _expandedMonthKey.value = yearMonth
+            viewModelScope.launch {
+                _daysForExpandedMonth.value = dao.countPhotosPerDayInMonth(yearMonth)
+            }
+        }
+    }
+
+    fun toggleAccordionYear(year: String) {
+        if (_expandedYear.value == year) {
+            _expandedYear.value = null
+            _monthsForExpandedYear.value = emptyList()
+            _expandedMonthKey.value = null
+            _daysForExpandedMonth.value = emptyList()
+        } else {
+            _expandedYear.value = year
+            _expandedMonthKey.value = null
+            _daysForExpandedMonth.value = emptyList()
+            viewModelScope.launch {
+                _monthsForExpandedYear.value = dao.countPhotosPerMonthInYear(year, "")
+            }
+        }
+    }
+
+    fun selectAccordionDate(yearMonth: String, day: String) {
+        viewModelScope.launch {
+            _selectedDatePhotos.value = dao.getImagesForDate("$yearMonth-$day")
+        }
+    }
+
+    fun clearSelectedAccordionDate() {
+        _selectedDatePhotos.value = null
+    }
 
     val videos: StateFlow<List<FileEntity>> = dao.getVideos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

@@ -75,3 +75,20 @@ Status: [PROSES] - patch ditempel ke branch main, MENUNGGU build & tes di HP dik
 
 ### Catatan workflow
 Sejak 11 Sept, semua kerja pindah ke branch main (branch per-akun dihapus, resmi di CONVENTIONS.md). Update ini adalah update pertama ke LAPORAN-hz19.md di branch main - update sebelumnya (yang sempat ditulis 2x) ada di branch `hz19` lama yang sekarang ditinggalkan.
+
+## 2026-09-11 (lanjutan) - Checkpoint 2a+2b
+
+### Progress: backend accordion (query + state ViewModel)
+- FileDao.kt: tambah `getImagesPagedForMonth(yearMonth)` (paging dibatasi 1 bulan saja) dan `getImagesForDate(date)` (list foto 1 tanggal spesifik, non-paged, dipakai saat tanggal di accordion lama di-tap - alurnya sama seperti buka folder di mode Folder)
+- HomeViewModel.kt: 
+  - `imagesPaged` sekarang dibatasi ke bulan berjalan saja (`getImagesPagedForMonth(currentYearMonth)`), header diganti dari `monthLabelOf` ke `dayLabelOf` (format "11 Sep", tanpa "Hari ini"/"Kemarin") - INI SEKALIGUS jadi fix bug header hilang, karena bulan lama sudah tidak lewat Paging3/insertSeparators sama sekali
+  - Tambah state accordion: `pastMonthsInCurrentYear`, `pastYears`, `expandedMonthKey`+`daysForExpandedMonth`, `expandedYear`+`monthsForExpandedYear`, `selectedDatePhotos`
+  - Tambah fungsi: `loadImageAccordionSummaries()`, `toggleAccordionMonth()`, `toggleAccordionYear()`, `selectAccordionDate()`, `clearSelectedAccordionDate()`
+Status: [PROSES] - patch ditempel, MENUNGGU build & tes di HP. Alur tap: tahun -> tap -> daftar bulan -> tap -> daftar tanggal -> tap -> grid foto (grid akhir tidak accordion lagi, sesuai kesepakatan).
+
+### Rencana kerja & file terkait (aktif)
+1. [SELESAI] Query hitung foto per grup (FileDao.kt, di main)
+2. [PROSES] Backend accordion (FileDao.kt query tambahan + HomeViewModel.kt state) - tinggal tes build
+3. [BELUM] UI ImageGalleryScreen.kt: render baris ringkasan bulan/tahun (dengan jumlah foto di kanan) di bawah grid bulan berjalan, sambungkan tap ke fungsi toggle/select ViewModel, tampilkan grid saat selectedDatePhotos terisi (pola sama seperti selectedFolder)
+4. [BELUM] Tes dengan data asli ~23rb foto
+5. [BELUM] Sticky header & Fast Scroller (menyusul setelah accordion final stabil)

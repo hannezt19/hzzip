@@ -98,6 +98,22 @@ interface FileDao {
         ORDER BY year DESC
     """)
     suspend fun countPhotosPerYear(currentYear: String): List<YearCount>
+
+    @Query("""
+        SELECT * FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y-%m', lastModified/1000, 'unixepoch', 'localtime') = :yearMonth
+        ORDER BY lastModified DESC
+    """)
+    fun getImagesPagedForMonth(yearMonth: String): PagingSource<Int, FileEntity>
+
+    @Query("""
+        SELECT * FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y-%m-%d', lastModified/1000, 'unixepoch', 'localtime') = :date
+        ORDER BY lastModified DESC
+    """)
+    suspend fun getImagesForDate(date: String): List<FileEntity>
 }
 
 data class DayCount(val day: String, val count: Int)
