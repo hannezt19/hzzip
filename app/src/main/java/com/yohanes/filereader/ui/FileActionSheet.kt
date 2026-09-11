@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
@@ -60,7 +61,8 @@ fun FileActionSheet(
     onCopy: (FileEntity) -> Unit,
     onCut: (FileEntity) -> Unit,
     onDeleteConfirmed: (FileEntity) -> Unit,
-    onRenameConfirmed: (FileEntity, String) -> Unit
+    onRenameConfirmed: (FileEntity, String) -> Unit,
+    onSelect: (FileEntity) -> Unit
 ) {
     val context = LocalContext.current
     var showProperties by remember { mutableStateOf(false) }
@@ -76,6 +78,10 @@ fun FileActionSheet(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             Divider()
+            ActionItem(Icons.Filled.CheckBox, "Pilih") {
+                onSelect(file)
+                onDismiss()
+            }
             ActionItem(Icons.Filled.Info, "Properti") { showProperties = true }
             ActionItem(Icons.Filled.ContentCopy, "Salin") {
                 onCopy(file)

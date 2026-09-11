@@ -35,3 +35,7 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 
 ## Update 11 Sept 2026 - Integrasi FileActionSheet ke ImageThumbnail (Gambar)
 - [SELESAI] Tambah onLongClick di ImageThumbnail (Gambar), pakai combinedClickable, wiring onFileLongClick dari HomeScreen ke ImageGalleryScreen di KEDUA mode (Terbaru & Folder). Pola persis meniru VideoThumbnail. DIKONFIRMASI user: build hijau, tes di HP oke, long-press berfungsi di kedua mode.
+
+## Update 11 Sept 2026 - Tahap 2: Multi-select (checkpoint 2)
+- [PROSES] Checkpoint 1 (fondasi): FileClipboard diperluas jadi List<FileEntity>, state selectedPaths/isSelectionMode/toggleSelect/startSelection/clearSelection/deleteFiles di HomeViewModel. Build hijau, sudah push.
+- [PROSES] Checkpoint 2: aksi baru "Pilih" di FileActionSheet - masuk mode-pilih dari long-press biasa (tidak mengganti perilaku FileActionSheet yang sudah ada). Menunggu build.

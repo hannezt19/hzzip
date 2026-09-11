@@ -105,7 +105,8 @@ fun HomeScreen(
             onCopy = { FileClipboard.copy(it) },
             onCut = { FileClipboard.cut(it) },
             onDeleteConfirmed = { viewModel.deleteFile(it) },
-            onRenameConfirmed = { f, newName -> viewModel.renameFile(f, newName) }
+            onRenameConfirmed = { f, newName -> viewModel.renameFile(f, newName) },
+            onSelect = { viewModel.startSelection(it) }
         )
     }
 }
