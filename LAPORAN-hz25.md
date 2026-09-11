@@ -34,4 +34,4 @@ Rencana teknis dari sisi hz25 (belum dieksekusi, menunggu konfirmasi hz19 dulu s
 - 8 Sept: fix posisi pill toggle Gambar (sempat di atas, seharusnya di bawah)
 
 ## Update 11 Sept 2026 - Integrasi FileActionSheet ke ImageThumbnail (Gambar)
-- [PROSES] Patch ditulis: tambah onLongClick di ImageThumbnail (Gambar), pakai combinedClickable, wiring onFileLongClick dari HomeScreen ke ImageGalleryScreen di KEDUA mode (Terbaru & Folder). Pola persis meniru VideoThumbnail. Menunggu konfirmasi build hijau + tes di HP sebelum ditandai SELESAI.
+- [SELESAI] Tambah onLongClick di ImageThumbnail (Gambar), pakai combinedClickable, wiring onFileLongClick dari HomeScreen ke ImageGalleryScreen di KEDUA mode (Terbaru & Folder). Pola persis meniru VideoThumbnail. DIKONFIRMASI user: build hijau, tes di HP oke, long-press berfungsi di kedua mode.
