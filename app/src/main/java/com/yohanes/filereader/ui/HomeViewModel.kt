@@ -204,7 +204,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // Set path file yang sedang dipilih. Tidak kosong = mode pilih aktif.
     private val _selectedPaths = MutableStateFlow<Set<String>>(emptySet())
     val selectedPaths: StateFlow<Set<String>> = _selectedPaths
-    val isSelectionMode: StateFlow<Boolean> = _selectedPaths
+    val isSelectionMode: StateFlow<Boolean> = selectedPaths
+        .map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
         .map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
