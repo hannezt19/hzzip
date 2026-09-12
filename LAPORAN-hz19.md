@@ -122,12 +122,12 @@ Setelah dites, desain "tap tanggal buka layar terpisah" terasa kosong (cuma teks
 - HomeViewModel.kt: tambah state Map pratinjau per level (pastMonthsPreview/pastYearsPreview/daysPreview/monthsForExpandedYearPreview) + expandedDateKey+photosForExpandedDate (ganti total dari selectedDatePhotos/selectAccordionDate/clearSelectedAccordionDate yang dihapus), tambah fungsi toggleAccordionDate
 - ImageGalleryScreen.kt: ditulis ulang total - AccordionRow diganti AccordionGridItem (LabelRow/PreviewPhoto/FullPhoto), buildAccordionRows diganti buildAccordionGridItems (rekursif bulan->tanggal dengan pratinjau di tiap level), blok layar terpisah selectedDatePhotos dihapus
 - HomeScreen.kt: sambungkan 4 StateFlow Map pratinjau baru + expandedDateKey/photosForExpandedDate, ganti onSelectDate/onClearSelectedDate jadi onToggleDate
-Status: [PROSES] - patch ditempel, MENUNGGU build & tes di HP
+Status: [PROSES] - build pertama GAGAL (Unresolved reference: animateItem - API tidak tersedia di versi Compose project ini), 3 pemakaian animateItem() dihapus, MENUNGGU build ulang
 
 ### Rencana kerja & file terkait (aktif)
 1. [SELESAI] Query hitung foto per grup
 2. [SELESAI] Backend accordion dasar
 3. [SELESAI] UI accordion versi 1 (teks polos, sudah diganti)
-4. [PROSES] UI accordion versi 2 (inline-expand + pratinjau 3 foto + animasi) - tinggal tes build
+4. [PROSES] UI accordion versi 2 (inline-expand + pratinjau 3 foto) - animasi buka/tutup DITUNDA (versi Compose belum dukung animateItem), tinggal tes build ulang
 5. [BELUM] Tes dengan data asli ~23rb foto
 6. [BELUM] Sticky header & Fast Scroller

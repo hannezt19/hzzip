@@ -384,8 +384,7 @@ fun ImageGalleryScreen(
                                 .fillMaxWidth()
                                 .height(96.dp)
                                 .padding(start = (16 + gridItem.indent * 16).dp, end = 16.dp)
-                                .clickable { gridItem.onClick() }
-                                .animateItem(),
+                                .clickable { gridItem.onClick() },
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Row(
@@ -410,7 +409,6 @@ fun ImageGalleryScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { gridItem.onClick() }
-                                .animateItem()
                         ) {
                             SubcomposeAsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
@@ -425,13 +423,11 @@ fun ImageGalleryScreen(
                         }
                     }
                     is AccordionGridItem.FullPhoto -> {
-                        Box(modifier = Modifier.animateItem()) {
-                            ImageThumbnail(
-                                file = gridItem.file,
-                                onLongClick = gridItem.onLongClickPhoto,
-                                onClick = gridItem.onClick
-                            )
-                        }
+                        ImageThumbnail(
+                            file = gridItem.file,
+                            onLongClick = gridItem.onLongClickPhoto,
+                            onClick = gridItem.onClick
+                        )
                     }
                 }
             }
