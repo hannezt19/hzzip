@@ -32,7 +32,7 @@
 - **Zoom PDF melebihi frame**: SUDAH FIX
 - **Label bulan hilang di mode Terbaru galeri Gambar**: header pemisah bulan cuma tampil untuk bulan berjalan, bulan lain fotonya tetap ada tapi headernya hilang - kepemilikan dipegang hz19, dugaan terbaru mengarah ke logika insertSeparators/Paging3, masih investigasi
 - **hamburger Beranda tidak sejajar 1 baris dengan search bar**: SUDAH DIPUTUSKAN user - kondisi sekarang (reserved space baris terpisah) sudah cukup, TIDAK perlu diubah
-- **Zoom PDF mode Scroll**: masih ada masalah "nyangkut"/numpuk saat 2 halaman kelihatan bersamaan - hz21 sedang perbaiki bertahap (5 tahap, tahap 5 baru push), belum terverifikasi tuntas di HP
+- **Zoom PDF mode Scroll**: SUDAH DIPERBAIKI TOTAL (11 Sept, [yhs13]) - lihat "Keputusan Desain Tambahan (11 Sept)" di bawah untuk detail arsitektur baru. Verified di HP.
 
 ## Keputusan Desain Tambahan (8 Sept)
 
@@ -44,3 +44,12 @@
 ## Update (hz11)
 - Bug build-breaking `Unresolved reference: clickable` di AudioPlayerScreen.kt SUDAH FIX oleh ydiv2 (dibantu akun baru yhs13). Build sudah hijau.
 - Akun **yhs13** kini membantu ydiv2 untuk bagian Audio.
+
+
+## Keputusan Desain Tambahan (11 Sept, [yhs13])
+
+- **Zoom PDF mode Scroll pakai Telephoto**: setelah 8 percobaan gesture custom shared-state (commit d776407 s/d ec2aa53, semua oleh hz21) gagal stabil (bug tumpuk/scroll macet berulang), pendekatan diganti total: pakai library **Telephoto** (`me.saket.telephoto:zoomable:0.11.2`, dependency sudah ada di `build.gradle.kts`). `LazyColumn` mode Scroll dibungkus `Modifier.zoomable(rememberZoomableState(), onClick = {...})` - zoom & tap jadi satu di level yang membungkus SEMUA halaman, bukan per-halaman lagi.
+- **JANGAN kembalikan ke gesture custom manual untuk zoom mode Scroll** - sudah terbukti gagal 8x. Kalau ada bug baru di zoom mode Scroll, perbaiki di sekitar `Modifier.zoomable()`/Telephoto API, JANGAN bikin ulang `awaitEachGesture`/`detectTransformGestures` custom dari nol.
+- **Mode Swipe (HorizontalPager) TIDAK ikut diubah** - tetap pakai gesture custom lama (`ZoomableImageBox` dengan `ownGestures = true`, default), karena di mode Swipe cuma 1 halaman terlihat sekaligus jadi tidak butuh zoom menyatu, dan sudah stabil dari awal.
+- **Parameter `ownGestures: Boolean`** ditambahkan ke `ZoomableImageBox`/`ZoomablePdfPage`/`ScrollPdfPage` - `true` (default) = pakai gesture custom lama (dipakai mode Swipe), `false` = tanpa gesture sendiri karena zoom+tap sudah ditangani Telephoto di level `LazyColumn` (dipakai mode Scroll).
+- **Known issue kecil (belum diperbaiki, prioritas rendah)**: sedikit "menyendat" saat zoom di beberapa file berukuran kecil - dugaan awal: render Bitmap halaman baru (`PdfRenderSessionCache.getOrCreate`/`renderPage`) kebetulan terjadi bersamaan dengan animasi zoom. User anggap sudah cukup baik, belum perlu dioptimasi sekarang.
