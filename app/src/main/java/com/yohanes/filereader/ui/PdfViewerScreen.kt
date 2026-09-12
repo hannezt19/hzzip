@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -111,9 +113,6 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
     val isFav = favorites.contains(favKey)
 
     var modeBacaActive by remember { mutableStateOf(false) }
-    var scrollZoom by remember { mutableFloatStateOf(1f) }
-    var scrollOffsetX by remember { mutableFloatStateOf(0f) }
-    var scrollOffsetY by remember { mutableFloatStateOf(0f) }
     var translateActive by remember { mutableStateOf(false) }
     var settingsModalOpen by remember { mutableStateOf(false) }
     var pageGridOpen by remember { mutableStateOf(false) }
@@ -309,10 +308,13 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                         }
                     }
                 } else {
+                    val scrollZoomableState = rememberZoomableState()
                     Box(Modifier.fillMaxSize()) {
                         LazyColumn(
                             state = scrollListState,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zoomable(scrollZoomableState, onClick = { settingsModalOpen = true })
                         ) {
                             items(pageCount, key = { it }) { pageIndex ->
                                 if (modeBacaActive) {
@@ -334,7 +336,7 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                         ScrollPdfPage(
                                             uri = uri,
                                             pageIndex = pageIndex,
-                                            onTap = { settingsModalOpen = true }
+                                            ownGestures = false
                                         )
                                         if (pageIndex < pageCount - 1) {
                                             HorizontalDivider(
@@ -344,66 +346,6 @@ fun PdfViewerScreen(uri: Uri, displayName: String) {
                                         }
                                     }
                                 }
-                            }
-                        }
-                        if (false && !modeBacaActive) {
-                            val liveScrollZoom = rememberUpdatedState(scrollZoom)
-                            val liveScrollOffsetX = rememberUpdatedState(scrollOffsetX)
-                            val liveScrollOffsetY = rememberUpdatedState(scrollOffsetY)
-                            var scrollContainerSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .onGloballyPositioned { coordinates -> scrollContainerSize = coordinates.size }
-                                    .pointerInput(Unit) {
-                                        awaitEachGesture {
-                                            awaitFirstDown(requireUnconsumed = false)
-                                            do {
-                                                val event = awaitPointerEvent()
-                                                val isPinch = event.changes.size >= 2
-                                                if (isPinch || liveScrollZoom.value > 1f) {
-                                                    val zoomChange = event.calculateZoom()
-                                                    val panChange = event.calculatePan()
-                                                    val newZoom = (liveScrollZoom.value * zoomChange).coerceIn(1f, 5f)
-                                                    scrollZoom = newZoom
-                                                    if (newZoom > 1f && scrollContainerSize.width > 0 && scrollContainerSize.height > 0) {
-                                                        val maxOffsetX = scrollContainerSize.width.toFloat() * (newZoom - 1f) / 2f
-                                                        val maxOffsetY = (scrollContainerSize.width.toFloat() / 0.7071f) * (newZoom - 1f) / 2f
-                                                        val newOffsetX = (liveScrollOffsetX.value + panChange.x).coerceIn(-maxOffsetX, maxOffsetX)
-                                                        val newOffsetY = (liveScrollOffsetY.value + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
-                                                        val panMasihBisaGerak = newOffsetX != liveScrollOffsetX.value || newOffsetY != liveScrollOffsetY.value
-                                                        scrollOffsetX = newOffsetX
-                                                        scrollOffsetY = newOffsetY
-                                                        if (isPinch || panMasihBisaGerak) {
-                                                            event.changes.forEach { it.consume() }
-                                                        }
-                                                    } else {
-                                                        scrollOffsetX = 0f
-                                                        scrollOffsetY = 0f
-                                                        if (isPinch) {
-                                                            event.changes.forEach { it.consume() }
-                                                        }
-                                                    }
-                                                }
-                                            } while (event.changes.any { it.pressed })
-                                        }
-                                    }
-                            )
-                            IconButton(
-                                onClick = { settingsModalOpen = true },
-                                modifier = Modifier
-                                    .align(androidx.compose.ui.Alignment.BottomEnd)
-                                    .padding(20.dp)
-                                    .background(
-                                        androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
-                                        androidx.compose.foundation.shape.CircleShape
-                                    )
-                            ) {
-                                Icon(
-                                    Icons.Filled.Settings,
-                                    contentDescription = "Pengaturan",
-                                    tint = androidx.compose.ui.graphics.Color.White
-                                )
                             }
                         }
                     }
@@ -1092,7 +1034,8 @@ private fun ZoomableImageBox(
     clipOwnBounds: Boolean = true,
     externalOffsetX: Float? = null,
     externalOffsetY: Float? = null,
-    onExternalOffsetChange: ((Float, Float) -> Unit)? = null
+    onExternalOffsetChange: ((Float, Float) -> Unit)? = null,
+    ownGestures: Boolean = true
 ) {
     var localZoom by remember { mutableFloatStateOf(1f) }
     val zoom = externalZoom ?: localZoom
@@ -1117,7 +1060,7 @@ private fun ZoomableImageBox(
             .clipToBounds()
             .onGloballyPositioned { coordinates -> containerSize = coordinates.size }
             .then(
-                if (clipOwnBounds) Modifier
+                if (clipOwnBounds && ownGestures) Modifier
                     .pointerInput(bitmap) {
                         awaitEachGesture {
                             awaitFirstDown(requireUnconsumed = false)
@@ -1202,7 +1145,7 @@ private fun ZoomableImageBox(
 }
 
 @Composable
-private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null, sharedOffsetX: Float? = null, sharedOffsetY: Float? = null, onSharedOffsetChange: ((Float, Float) -> Unit)? = null) {
+private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit = {}, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null, sharedOffsetX: Float? = null, sharedOffsetY: Float? = null, onSharedOffsetChange: ((Float, Float) -> Unit)? = null, ownGestures: Boolean = true) {
     val context = LocalContext.current
     var aspect by remember(pageIndex) { mutableFloatStateOf(0.7071f) }
 
@@ -1227,13 +1170,14 @@ private fun ScrollPdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoo
             onSharedZoomChange = onSharedZoomChange,
             sharedOffsetX = sharedOffsetX,
             sharedOffsetY = sharedOffsetY,
-            onSharedOffsetChange = onSharedOffsetChange
+            onSharedOffsetChange = onSharedOffsetChange,
+            ownGestures = ownGestures
         )
     }
 }
 
 @Composable
-private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null, sharedOffsetX: Float? = null, sharedOffsetY: Float? = null, onSharedOffsetChange: ((Float, Float) -> Unit)? = null) {
+private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZoom: Float? = null, onSharedZoomChange: ((Float) -> Unit)? = null, sharedOffsetX: Float? = null, sharedOffsetY: Float? = null, onSharedOffsetChange: ((Float, Float) -> Unit)? = null, ownGestures: Boolean = true) {
     val context = LocalContext.current
     var bitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
 
@@ -1278,7 +1222,8 @@ private fun ZoomablePdfPage(uri: Uri, pageIndex: Int, onTap: () -> Unit, sharedZ
         clipOwnBounds = sharedZoom == null,
         externalOffsetX = sharedOffsetX,
         externalOffsetY = sharedOffsetY,
-        onExternalOffsetChange = onSharedOffsetChange
+        onExternalOffsetChange = onSharedOffsetChange,
+        ownGestures = ownGestures
     )
 }
 

@@ -36,7 +36,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-private const val TELEPHOTO_TEST_MODE = true // set false setelah selesai tes
+private const val TELEPHOTO_TEST_MODE = false // set false setelah selesai tes
 
 class MainActivity : ComponentActivity() {
 
