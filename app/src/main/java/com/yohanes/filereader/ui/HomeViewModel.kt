@@ -167,12 +167,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         .cachedIn(viewModelScope)
 
-    // === Accordion Tahun -> Bulan -> Tanggal untuk bulan/tahun lama ===
+    // === Accordion Tahun -> Bulan -> Tanggal (inline expand, dengan pratinjau 3 foto per grup) ===
     private val _pastMonthsInCurrentYear = MutableStateFlow<List<MonthCount>>(emptyList())
     val pastMonthsInCurrentYear: StateFlow<List<MonthCount>> = _pastMonthsInCurrentYear
 
+    private val _pastMonthsPreview = MutableStateFlow<Map<String, List<FileEntity>>>(emptyMap())
+    val pastMonthsPreview: StateFlow<Map<String, List<FileEntity>>> = _pastMonthsPreview
+
     private val _pastYears = MutableStateFlow<List<YearCount>>(emptyList())
     val pastYears: StateFlow<List<YearCount>> = _pastYears
+
+    private val _pastYearsPreview = MutableStateFlow<Map<String, List<FileEntity>>>(emptyMap())
+    val pastYearsPreview: StateFlow<Map<String, List<FileEntity>>> = _pastYearsPreview
 
     private val _expandedMonthKey = MutableStateFlow<String?>(null)
     val expandedMonthKey: StateFlow<String?> = _expandedMonthKey
@@ -180,58 +186,84 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _daysForExpandedMonth = MutableStateFlow<List<DayCount>>(emptyList())
     val daysForExpandedMonth: StateFlow<List<DayCount>> = _daysForExpandedMonth
 
+    private val _daysPreview = MutableStateFlow<Map<String, List<FileEntity>>>(emptyMap())
+    val daysPreview: StateFlow<Map<String, List<FileEntity>>> = _daysPreview
+
     private val _expandedYear = MutableStateFlow<String?>(null)
     val expandedYear: StateFlow<String?> = _expandedYear
 
     private val _monthsForExpandedYear = MutableStateFlow<List<MonthCount>>(emptyList())
     val monthsForExpandedYear: StateFlow<List<MonthCount>> = _monthsForExpandedYear
 
-    private val _selectedDatePhotos = MutableStateFlow<List<FileEntity>?>(null)
-    val selectedDatePhotos: StateFlow<List<FileEntity>?> = _selectedDatePhotos
+    private val _monthsForExpandedYearPreview = MutableStateFlow<Map<String, List<FileEntity>>>(emptyMap())
+    val monthsForExpandedYearPreview: StateFlow<Map<String, List<FileEntity>>> = _monthsForExpandedYearPreview
+
+    private val _expandedDateKey = MutableStateFlow<String?>(null)
+    val expandedDateKey: StateFlow<String?> = _expandedDateKey
+
+    private val _photosForExpandedDate = MutableStateFlow<List<FileEntity>>(emptyList())
+    val photosForExpandedDate: StateFlow<List<FileEntity>> = _photosForExpandedDate
 
     fun loadImageAccordionSummaries() {
         viewModelScope.launch {
-            _pastMonthsInCurrentYear.value = dao.countPhotosPerMonthInYear(currentYear, currentYearMonth)
-            _pastYears.value = dao.countPhotosPerYear(currentYear)
+            val months = dao.countPhotosPerMonthInYear(currentYear, currentYearMonth)
+            _pastMonthsInCurrentYear.value = months
+            _pastMonthsPreview.value = months.associate { it.yearMonth to dao.getPreviewPhotosForMonth(it.yearMonth) }
+
+            val years = dao.countPhotosPerYear(currentYear)
+            _pastYears.value = years
+            _pastYearsPreview.value = years.associate { it.year to dao.getPreviewPhotosForYear(it.year) }
         }
     }
 
     fun toggleAccordionMonth(yearMonth: String) {
+        _expandedDateKey.value = null
+        _photosForExpandedDate.value = emptyList()
         if (_expandedMonthKey.value == yearMonth) {
             _expandedMonthKey.value = null
             _daysForExpandedMonth.value = emptyList()
+            _daysPreview.value = emptyMap()
         } else {
             _expandedMonthKey.value = yearMonth
             viewModelScope.launch {
-                _daysForExpandedMonth.value = dao.countPhotosPerDayInMonth(yearMonth)
+                val days = dao.countPhotosPerDayInMonth(yearMonth)
+                _daysForExpandedMonth.value = days
+                _daysPreview.value = days.associate { "$yearMonth-${it.day}" to dao.getPreviewPhotosForDate("$yearMonth-${it.day}") }
             }
         }
     }
 
     fun toggleAccordionYear(year: String) {
+        _expandedMonthKey.value = null
+        _daysForExpandedMonth.value = emptyList()
+        _daysPreview.value = emptyMap()
+        _expandedDateKey.value = null
+        _photosForExpandedDate.value = emptyList()
         if (_expandedYear.value == year) {
             _expandedYear.value = null
             _monthsForExpandedYear.value = emptyList()
-            _expandedMonthKey.value = null
-            _daysForExpandedMonth.value = emptyList()
+            _monthsForExpandedYearPreview.value = emptyMap()
         } else {
             _expandedYear.value = year
-            _expandedMonthKey.value = null
-            _daysForExpandedMonth.value = emptyList()
             viewModelScope.launch {
-                _monthsForExpandedYear.value = dao.countPhotosPerMonthInYear(year, "")
+                val months = dao.countPhotosPerMonthInYear(year, "")
+                _monthsForExpandedYear.value = months
+                _monthsForExpandedYearPreview.value = months.associate { it.yearMonth to dao.getPreviewPhotosForMonth(it.yearMonth) }
             }
         }
     }
 
-    fun selectAccordionDate(yearMonth: String, day: String) {
-        viewModelScope.launch {
-            _selectedDatePhotos.value = dao.getImagesForDate("$yearMonth-$day")
+    fun toggleAccordionDate(yearMonth: String, day: String) {
+        val dateKey = "$yearMonth-$day"
+        if (_expandedDateKey.value == dateKey) {
+            _expandedDateKey.value = null
+            _photosForExpandedDate.value = emptyList()
+        } else {
+            _expandedDateKey.value = dateKey
+            viewModelScope.launch {
+                _photosForExpandedDate.value = dao.getImagesForDate(dateKey)
+            }
         }
-    }
-
-    fun clearSelectedAccordionDate() {
-        _selectedDatePhotos.value = null
     }
 
     val videos: StateFlow<List<FileEntity>> = dao.getVideos()

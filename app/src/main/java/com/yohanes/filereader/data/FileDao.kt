@@ -114,6 +114,33 @@ interface FileDao {
         ORDER BY lastModified DESC
     """)
     suspend fun getImagesForDate(date: String): List<FileEntity>
+
+    @Query("""
+        SELECT * FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y-%m', lastModified/1000, 'unixepoch', 'localtime') = :yearMonth
+        ORDER BY lastModified DESC
+        LIMIT :limit
+    """)
+    suspend fun getPreviewPhotosForMonth(yearMonth: String, limit: Int = 3): List<FileEntity>
+
+    @Query("""
+        SELECT * FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y', lastModified/1000, 'unixepoch', 'localtime') = :year
+        ORDER BY lastModified DESC
+        LIMIT :limit
+    """)
+    suspend fun getPreviewPhotosForYear(year: String, limit: Int = 3): List<FileEntity>
+
+    @Query("""
+        SELECT * FROM files
+        WHERE extension IN ('jpg','jpeg','png','webp','gif')
+          AND strftime('%Y-%m-%d', lastModified/1000, 'unixepoch', 'localtime') = :date
+        ORDER BY lastModified DESC
+        LIMIT :limit
+    """)
+    suspend fun getPreviewPhotosForDate(date: String, limit: Int = 3): List<FileEntity>
 }
 
 data class DayCount(val day: String, val count: Int)

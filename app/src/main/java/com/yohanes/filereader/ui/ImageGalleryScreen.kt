@@ -56,13 +56,12 @@ private data class ImageFolderGroup(val path: String, val photos: List<FileEntit
     val label: String get() = path.substringAfterLast('/')
 }
 
-private data class AccordionRow(
-    val key: String,
-    val label: String,
-    val count: Int,
-    val indent: Int,
-    val onClick: () -> Unit
-)
+private sealed class AccordionGridItem {
+    abstract val key: String
+    data class LabelRow(override val key: String, val label: String, val count: Int, val indent: Int, val onClick: () -> Unit) : AccordionGridItem()
+    data class PreviewPhoto(override val key: String, val file: FileEntity, val onClick: () -> Unit) : AccordionGridItem()
+    data class FullPhoto(override val key: String, val file: FileEntity, val onClick: () -> Unit, val onLongClickPhoto: () -> Unit) : AccordionGridItem()
+}
 
 private fun monthNameFromYearMonth(yearMonth: String): String {
     return java.time.YearMonth.parse(yearMonth)
@@ -75,40 +74,80 @@ private fun dayRowLabel(day: String, yearMonth: String): String {
     return date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale("id", "ID")))
 }
 
-private fun buildAccordionRows(
+private fun buildAccordionGridItems(
     pastMonths: List<com.yohanes.filereader.data.MonthCount>,
+    pastMonthsPreview: Map<String, List<FileEntity>>,
     pastYears: List<com.yohanes.filereader.data.YearCount>,
+    pastYearsPreview: Map<String, List<FileEntity>>,
     expandedMonthKey: String?,
     daysForExpandedMonth: List<com.yohanes.filereader.data.DayCount>,
+    daysPreview: Map<String, List<FileEntity>>,
     expandedYear: String?,
     monthsForExpandedYear: List<com.yohanes.filereader.data.MonthCount>,
+    monthsForExpandedYearPreview: Map<String, List<FileEntity>>,
+    expandedDateKey: String?,
+    photosForExpandedDate: List<FileEntity>,
     onToggleMonth: (String) -> Unit,
     onToggleYear: (String) -> Unit,
-    onSelectDate: (String, String) -> Unit
-): List<AccordionRow> {
-    val rows = mutableListOf<AccordionRow>()
-    for (m in pastMonths) {
-        rows += AccordionRow("month_" + m.yearMonth, monthNameFromYearMonth(m.yearMonth), m.count, 0) { onToggleMonth(m.yearMonth) }
-        if (expandedMonthKey == m.yearMonth) {
-            for (d in daysForExpandedMonth) {
-                rows += AccordionRow("day_" + m.yearMonth + "-" + d.day, dayRowLabel(d.day, m.yearMonth), d.count, 1) { onSelectDate(m.yearMonth, d.day) }
-            }
-        }
-    }
-    for (y in pastYears) {
-        rows += AccordionRow("year_" + y.year, y.year, y.count, 0) { onToggleYear(y.year) }
-        if (expandedYear == y.year) {
-            for (mo in monthsForExpandedYear) {
-                rows += AccordionRow("yearmonth_" + mo.yearMonth, monthNameFromYearMonth(mo.yearMonth), mo.count, 1) { onToggleMonth(mo.yearMonth) }
-                if (expandedMonthKey == mo.yearMonth) {
-                    for (d in daysForExpandedMonth) {
-                        rows += AccordionRow("yearday_" + mo.yearMonth + "-" + d.day, dayRowLabel(d.day, mo.yearMonth), d.count, 2) { onSelectDate(mo.yearMonth, d.day) }
-                    }
+    onToggleDate: (String, String) -> Unit,
+    onOpenPager: (List<FileEntity>, FileEntity) -> Unit,
+    onFileLongClick: (FileEntity) -> Unit
+): List<AccordionGridItem> {
+    val items = mutableListOf<AccordionGridItem>()
+
+    fun addDateRows(yearMonth: String, days: List<com.yohanes.filereader.data.DayCount>) {
+        for (d in days) {
+            val dateKey = "$yearMonth-${d.day}"
+            items += AccordionGridItem.LabelRow("daterow_$dateKey", dayRowLabel(d.day, yearMonth), d.count, 1) { onToggleDate(yearMonth, d.day) }
+            if (expandedDateKey == dateKey) {
+                for (photo in photosForExpandedDate) {
+                    items += AccordionGridItem.FullPhoto(
+                        "fullphoto_${photo.path}",
+                        photo,
+                        onClick = { onOpenPager(photosForExpandedDate, photo) },
+                        onLongClickPhoto = { onFileLongClick(photo) }
+                    )
+                }
+            } else {
+                for (photo in daysPreview[dateKey].orEmpty()) {
+                    items += AccordionGridItem.PreviewPhoto("preview_$dateKey" + "_" + photo.path, photo) { onToggleDate(yearMonth, d.day) }
                 }
             }
         }
     }
-    return rows
+
+    for (m in pastMonths) {
+        items += AccordionGridItem.LabelRow("month_${m.yearMonth}", monthNameFromYearMonth(m.yearMonth), m.count, 0) { onToggleMonth(m.yearMonth) }
+        if (expandedMonthKey == m.yearMonth) {
+            addDateRows(m.yearMonth, daysForExpandedMonth)
+        } else {
+            for (photo in pastMonthsPreview[m.yearMonth].orEmpty()) {
+                items += AccordionGridItem.PreviewPhoto("previewmonth_${m.yearMonth}_${photo.path}", photo) { onToggleMonth(m.yearMonth) }
+            }
+        }
+    }
+
+    for (y in pastYears) {
+        items += AccordionGridItem.LabelRow("year_${y.year}", y.year, y.count, 0) { onToggleYear(y.year) }
+        if (expandedYear == y.year) {
+            for (mo in monthsForExpandedYear) {
+                items += AccordionGridItem.LabelRow("yearmonth_${mo.yearMonth}", monthNameFromYearMonth(mo.yearMonth), mo.count, 1) { onToggleMonth(mo.yearMonth) }
+                if (expandedMonthKey == mo.yearMonth) {
+                    addDateRows(mo.yearMonth, daysForExpandedMonth)
+                } else {
+                    for (photo in monthsForExpandedYearPreview[mo.yearMonth].orEmpty()) {
+                        items += AccordionGridItem.PreviewPhoto("previewyearmonth_${mo.yearMonth}_${photo.path}", photo) { onToggleMonth(mo.yearMonth) }
+                    }
+                }
+            }
+        } else {
+            for (photo in pastYearsPreview[y.year].orEmpty()) {
+                items += AccordionGridItem.PreviewPhoto("previewyear_${y.year}_${photo.path}", photo) { onToggleYear(y.year) }
+            }
+        }
+    }
+
+    return items
 }
 
 @Composable
@@ -122,16 +161,20 @@ fun ImageGalleryScreen(
     onFileClick: (FileEntity) -> Unit,
     onFileLongClick: (FileEntity) -> Unit,
     pastMonthsInCurrentYear: List<com.yohanes.filereader.data.MonthCount>,
+    pastMonthsPreview: Map<String, List<FileEntity>>,
     pastYears: List<com.yohanes.filereader.data.YearCount>,
+    pastYearsPreview: Map<String, List<FileEntity>>,
     expandedMonthKey: String?,
     daysForExpandedMonth: List<com.yohanes.filereader.data.DayCount>,
+    daysPreview: Map<String, List<FileEntity>>,
     expandedYear: String?,
     monthsForExpandedYear: List<com.yohanes.filereader.data.MonthCount>,
-    selectedDatePhotos: List<FileEntity>?,
+    monthsForExpandedYearPreview: Map<String, List<FileEntity>>,
+    expandedDateKey: String?,
+    photosForExpandedDate: List<FileEntity>,
     onToggleMonth: (String) -> Unit,
     onToggleYear: (String) -> Unit,
-    onSelectDate: (String, String) -> Unit,
-    onClearSelectedDate: () -> Unit,
+    onToggleDate: (String, String) -> Unit,
     onLoadAccordionSummaries: () -> Unit
 ) {
     var pagerIndex by remember { mutableStateOf<Int?>(null) }
@@ -152,43 +195,6 @@ fun ImageGalleryScreen(
 
     LaunchedEffect(Unit) {
         onLoadAccordionSummaries()
-    }
-
-    if (selectedDatePhotos != null) {
-        BackHandler { onClearSelectedDate() }
-        Box(Modifier.fillMaxSize()) {
-            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(4.dp, 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onClearSelectedDate) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
-                    }
-                    Text("Tanggal terpilih", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                }
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(4.dp)
-                ) {
-                    items(selectedDatePhotos, key = { it.path }) { file ->
-                        ImageThumbnail(
-                            file = file,
-                            onLongClick = { onFileLongClick(file) },
-                            onClick = {
-                                val idx = selectedDatePhotos.indexOfFirst { it.path == file.path }
-                                if (idx >= 0) {
-                                    pagerPhotos = selectedDatePhotos
-                                    pagerIndex = idx
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-        return
     }
 
     // Mode Folder - pengelompokan ringan (cuma daftar nama file, bukan buka semua gambar
@@ -258,17 +264,38 @@ fun ImageGalleryScreen(
     // Mode Terbaru - tetap pakai sistem paging yang sudah ada (ringan untuk koleksi besar).
     val pagingItems = imagesFlow.collectAsLazyPagingItems()
 
-    val accordionRows = remember(pastMonthsInCurrentYear, pastYears, expandedMonthKey, daysForExpandedMonth, expandedYear, monthsForExpandedYear) {
-        buildAccordionRows(
+    val onOpenPager: (List<FileEntity>, FileEntity) -> Unit = { list, file ->
+        val idx = list.indexOfFirst { it.path == file.path }
+        if (idx >= 0) {
+            pagerPhotos = list
+            pagerIndex = idx
+        }
+    }
+
+    val accordionGridItems = remember(
+        pastMonthsInCurrentYear, pastMonthsPreview, pastYears, pastYearsPreview,
+        expandedMonthKey, daysForExpandedMonth, daysPreview,
+        expandedYear, monthsForExpandedYear, monthsForExpandedYearPreview,
+        expandedDateKey, photosForExpandedDate
+    ) {
+        buildAccordionGridItems(
             pastMonths = pastMonthsInCurrentYear,
+            pastMonthsPreview = pastMonthsPreview,
             pastYears = pastYears,
+            pastYearsPreview = pastYearsPreview,
             expandedMonthKey = expandedMonthKey,
             daysForExpandedMonth = daysForExpandedMonth,
+            daysPreview = daysPreview,
             expandedYear = expandedYear,
             monthsForExpandedYear = monthsForExpandedYear,
+            monthsForExpandedYearPreview = monthsForExpandedYearPreview,
+            expandedDateKey = expandedDateKey,
+            photosForExpandedDate = photosForExpandedDate,
             onToggleMonth = onToggleMonth,
             onToggleYear = onToggleYear,
-            onSelectDate = onSelectDate
+            onToggleDate = onToggleDate,
+            onOpenPager = onOpenPager,
+            onFileLongClick = onFileLongClick
         )
     }
 
@@ -333,26 +360,78 @@ fun ImageGalleryScreen(
                     null -> {}
                 }
             }
-            items(accordionRows, key = { it.key }, span = { GridItemSpan(maxLineSpan) }) { row ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(96.dp)
-                        .padding(start = (16 + row.indent * 16).dp, end = 16.dp)
-                        .clickable { row.onClick() },
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(row.label, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "${row.count}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            items(
+                accordionGridItems,
+                key = { it.key },
+                span = { gridItem ->
+                    when (gridItem) {
+                        is AccordionGridItem.LabelRow -> GridItemSpan(maxLineSpan)
+                        else -> GridItemSpan(1)
+                    }
+                },
+                contentType = { gridItem ->
+                    when (gridItem) {
+                        is AccordionGridItem.LabelRow -> "accordion_label"
+                        is AccordionGridItem.PreviewPhoto -> "accordion_preview"
+                        is AccordionGridItem.FullPhoto -> "accordion_full"
+                    }
+                }
+            ) { gridItem ->
+                when (gridItem) {
+                    is AccordionGridItem.LabelRow -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(96.dp)
+                                .padding(start = (16 + gridItem.indent * 16).dp, end = 16.dp)
+                                .clickable { gridItem.onClick() }
+                                .animateItem(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(gridItem.label, style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    "${gridItem.count}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    is AccordionGridItem.PreviewPhoto -> {
+                        Box(
+                            modifier = Modifier
+                                .padding(2.dp)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { gridItem.onClick() }
+                                .animateItem()
+                        ) {
+                            SubcomposeAsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(File(gridItem.file.path))
+                                    .crossfade(true)
+                                    .precision(Precision.INEXACT)
+                                    .build(),
+                                contentDescription = gridItem.file.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                    is AccordionGridItem.FullPhoto -> {
+                        Box(modifier = Modifier.animateItem()) {
+                            ImageThumbnail(
+                                file = gridItem.file,
+                                onLongClick = gridItem.onLongClickPhoto,
+                                onClick = gridItem.onClick
+                            )
+                        }
                     }
                 }
             }

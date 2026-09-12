@@ -650,12 +650,17 @@ private fun CategoryDetailScreen(
             val imageMode by viewModel.imageGalleryMode.collectAsState()
             val selectedImageFolder by viewModel.selectedImageFolderPath.collectAsState()
             val pastMonthsInCurrentYear by viewModel.pastMonthsInCurrentYear.collectAsState()
+            val pastMonthsPreview by viewModel.pastMonthsPreview.collectAsState()
             val pastYears by viewModel.pastYears.collectAsState()
+            val pastYearsPreview by viewModel.pastYearsPreview.collectAsState()
             val expandedMonthKey by viewModel.expandedMonthKey.collectAsState()
             val daysForExpandedMonth by viewModel.daysForExpandedMonth.collectAsState()
+            val daysPreview by viewModel.daysPreview.collectAsState()
             val expandedYear by viewModel.expandedYear.collectAsState()
             val monthsForExpandedYear by viewModel.monthsForExpandedYear.collectAsState()
-            val selectedDatePhotos by viewModel.selectedDatePhotos.collectAsState()
+            val monthsForExpandedYearPreview by viewModel.monthsForExpandedYearPreview.collectAsState()
+            val expandedDateKey by viewModel.expandedDateKey.collectAsState()
+            val photosForExpandedDate by viewModel.photosForExpandedDate.collectAsState()
             ImageGalleryScreen(
                 imagesFlow = viewModel.imagesPaged,
                 images = images,
@@ -666,16 +671,20 @@ private fun CategoryDetailScreen(
                 onFileClick = onFileClick,
                 onFileLongClick = onFileLongClick,
                 pastMonthsInCurrentYear = pastMonthsInCurrentYear,
+                pastMonthsPreview = pastMonthsPreview,
                 pastYears = pastYears,
+                pastYearsPreview = pastYearsPreview,
                 expandedMonthKey = expandedMonthKey,
                 daysForExpandedMonth = daysForExpandedMonth,
+                daysPreview = daysPreview,
                 expandedYear = expandedYear,
                 monthsForExpandedYear = monthsForExpandedYear,
-                selectedDatePhotos = selectedDatePhotos,
+                monthsForExpandedYearPreview = monthsForExpandedYearPreview,
+                expandedDateKey = expandedDateKey,
+                photosForExpandedDate = photosForExpandedDate,
                 onToggleMonth = { viewModel.toggleAccordionMonth(it) },
                 onToggleYear = { viewModel.toggleAccordionYear(it) },
-                onSelectDate = { ym, d -> viewModel.selectAccordionDate(ym, d) },
-                onClearSelectedDate = { viewModel.clearSelectedAccordionDate() },
+                onToggleDate = { ym, d -> viewModel.toggleAccordionDate(ym, d) },
                 onLoadAccordionSummaries = { viewModel.loadImageAccordionSummaries() }
             )
         } else if (category == "Video") {

@@ -106,3 +106,28 @@ Status: [PROSES] - patch ditempel, MENUNGGU build & tes di HP
 3. [PROSES] UI accordion (ImageGalleryScreen.kt + HomeScreen.kt) - tinggal tes build
 4. [BELUM] Tes dengan data asli ~23rb foto
 5. [BELUM] Sticky header & Fast Scroller
+
+## 2026-09-11 (lanjutan 3) - Redesain accordion: inline-expand + pratinjau 3 foto
+
+### Keputusan baru dari user (koreksi desain sebelumnya)
+Setelah dites, desain "tap tanggal buka layar terpisah" terasa kosong (cuma teks) dan bikin posisi scroll lompat ke atas saat ditutup. Diganti total ke:
+- Tiap baris (bulan/tahun/tanggal) yang BELUM dibuka menampilkan strip 3 foto pratinjau (foto terbaru di grup itu) di bawah label - bukan cuma teks polos
+- Tap label ATAU tap salah satu foto pratinjau = sama-sama buka/lipat (BUKAN buka viewer foto)
+- Saat dibuka, strip pratinjau berubah jadi daftar sub-grup (bulan->tanggal) ATAU jadi grid penuh foto (kalau yang dibuka adalah tanggal, level akhir) - semua INLINE di grid yang sama, bukan pindah layar, sehingga posisi scroll tidak lompat
+- Cuma 1 bulan & 1 tanggal boleh terbuka dalam satu waktu (buka yang baru otomatis menutup yang lama)
+- Ditambah `.animateItem()` di tiap baris grid supaya transisi buka/tutup halus
+
+### Progress
+- FileDao.kt: tambah 3 query pratinjau (LIMIT 3) - getPreviewPhotosForMonth/Year/Date
+- HomeViewModel.kt: tambah state Map pratinjau per level (pastMonthsPreview/pastYearsPreview/daysPreview/monthsForExpandedYearPreview) + expandedDateKey+photosForExpandedDate (ganti total dari selectedDatePhotos/selectAccordionDate/clearSelectedAccordionDate yang dihapus), tambah fungsi toggleAccordionDate
+- ImageGalleryScreen.kt: ditulis ulang total - AccordionRow diganti AccordionGridItem (LabelRow/PreviewPhoto/FullPhoto), buildAccordionRows diganti buildAccordionGridItems (rekursif bulan->tanggal dengan pratinjau di tiap level), blok layar terpisah selectedDatePhotos dihapus
+- HomeScreen.kt: sambungkan 4 StateFlow Map pratinjau baru + expandedDateKey/photosForExpandedDate, ganti onSelectDate/onClearSelectedDate jadi onToggleDate
+Status: [PROSES] - patch ditempel, MENUNGGU build & tes di HP
+
+### Rencana kerja & file terkait (aktif)
+1. [SELESAI] Query hitung foto per grup
+2. [SELESAI] Backend accordion dasar
+3. [SELESAI] UI accordion versi 1 (teks polos, sudah diganti)
+4. [PROSES] UI accordion versi 2 (inline-expand + pratinjau 3 foto + animasi) - tinggal tes build
+5. [BELUM] Tes dengan data asli ~23rb foto
+6. [BELUM] Sticky header & Fast Scroller
