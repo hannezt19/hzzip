@@ -132,3 +132,18 @@ Status: [SELESAI] - build hijau, dikonfirmasi user (2026-09-11). Animasi buka/tu
 5. [BELUM] Tes dengan data asli ~23rb foto
 5. [BELUM] Tes dengan data asli ~23rb foto
 6. [BELUM] Sticky header & Fast Scroller
+
+## 2026-09-13 - Fase D dinaikkan prioritas, multi-select ditunda
+
+### Keputusan baru dari user
+- Sticky header dan Fast Scroller (rencana lama) DILEWATI sementara, tidak dikerjakan dulu
+- Tes dengan data asli ~23rb foto sudah dicoba user, hasilnya OK
+- Fase D (deteksi foto mirip/duplikat, perceptual hashing) dinaikkan jadi PRIORITAS SEKARANG - dibutuhkan user untuk memilah & menghapus foto duplikat dari ~23rb foto
+- DITEMUKAN: app sudah punya halaman "Analisis" (dari drawer) dengan menu Semua Partisi, File Besar, Berkas Terbaru, Folder Kosong, File Redundan, File Duplikat, Keranjang Sampah - Fase D akan dipetakan ke menu "File Duplikat" yang sudah ada ini, bukan halaman terpisah
+- Fitur multi-select foto (checkbox visual, select-all per grup accordion, action bar pengganti toggle Terbaru/Folder saat mode pilih aktif, opsi pindah ke folder pinned seperti Download) DITUNDA menunggu FileActionSheet hz25 selesai masuk main - alasan: eksekusi move/delete akan reuse logic FileActionSheet, dan posisi toggle Terbaru/Folder yang mau diganti action bar itu juga masih digarap hz25 (risiko konflik kode)
+- Hasil deteksi duplikat nantinya diintegrasikan ke multi-select: auto-select semua foto duplikat dalam grup KECUALI satu (foto terbaik/terbaru) untuk mempercepat hapus massal
+- Perlu dialog konfirmasi sebelum hapus massal, dan folder picker/pinned destination untuk fitur pindah massal
+
+### Rencana kerja & file terkait (aktif)
+- **[MENUNGGU KOORDINASI]** Fase D - deteksi foto mirip/duplikat: user akan koordinasi dulu dengan hz25 & hz11 soal siapa pegang halaman Analisis dan cakupan "File Duplikat" (semua tipe file vs foto saja) sebelum eksekusi. Rencana teknis setelah scope jelas: algoritma pHash/dHash, tabel Room baru simpan hash per foto, background job (WorkManager) untuk hashing awal 23rb foto + progress bar, tampilan grup foto mirip di menu "File Duplikat"
+- **[BLOCKED - nunggu hz25]** Fondasi multi-select (checkbox + selection state di ViewModel) - boleh disiapkan paralel selama tidak nyentuh file-ops/posisi toggle Terbaru-Folder
